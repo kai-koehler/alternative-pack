@@ -67,6 +67,7 @@ export default function App() {
     // export prerenders without them.
     const [restored, setRestored] = useState(false);
     const [filter, setFilter] = useState("");
+    const filterInputRef = useRef<HTMLInputElement>(null);
     // Only one picker can be open. Image capture waits while one is.
     const [openKey, setOpenKey] = useState<string | null>(null);
     const currentOpenKey = useRef<string | null>(null);
@@ -100,9 +101,12 @@ export default function App() {
 
     useEffect(() => {
         const saved = readSavedPack();
+        // A filter typed before the page ran is in the field but not in state.
+        const typedFilter = filterInputRef.current?.value ?? "";
         // A deliberate re-render after hydration, with the saved picks.
         /* eslint-disable react-hooks/set-state-in-effect */
         if (saved) setPack(restorePack(categories, saved));
+        if (typedFilter) setFilter(typedFilter);
         setRestored(true);
         /* eslint-enable react-hooks/set-state-in-effect */
     }, []);
@@ -387,6 +391,7 @@ export default function App() {
                                 </span>
                                 <SearchIcon className="size-5" />
                                 <input
+                                    ref={filterInputRef}
                                     id="filter-input"
                                     type="search"
                                     value={filter}

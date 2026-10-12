@@ -73,16 +73,43 @@ function loadLogo(id: string) {
     return logo;
 }
 
+const unquote = (family: string) => family.replace(/^["']|["']$/g, "");
+const WEIGHT_NAMES: Record<string, string> = { normal: "400", bold: "700" };
+
+/**
+ * Whether the page's face for `family` at `weight` has loaded. Checks the
+ * face itself: WebKit's fonts.check() also passes for a face that failed.
+ */
+function faceLoaded(family: string, weight: string) {
+    let found = false;
+    let loaded = true;
+    document.fonts.forEach((face) => {
+        if (
+            unquote(face.family) !== family ||
+            (WEIGHT_NAMES[face.weight] ?? face.weight) !== weight
+        ) {
+            return;
+        }
+        found = true;
+        if (face.status !== "loaded") loaded = false;
+    });
+    return found && loaded;
+}
+
 /** Loads both web fonts, and says whether they are ready for drawing. */
 async function ensureFonts() {
-    const specs = [
-        `600 40px ${HEADING_FONT}`,
-        `400 20px ${BODY_FONT}`,
-        `500 20px ${BODY_FONT}`,
-    ];
+    const faces = [
+        [unquote(firstFamily(HEADING_FONT)), "600"],
+        [unquote(firstFamily(BODY_FONT)), "400"],
+        [unquote(firstFamily(BODY_FONT)), "500"],
+    ] as const;
     try {
         await Promise.race([
-            Promise.all(specs.map((spec) => document.fonts.load(spec))),
+            Promise.all(
+                faces.map(([family, weight]) =>
+                    document.fonts.load(`${weight} 20px "${family}"`),
+                ),
+            ),
             new Promise((resolve) =>
                 window.setTimeout(resolve, FONT_TIMEOUT_MS),
             ),
@@ -90,17 +117,7 @@ async function ensureFonts() {
     } catch {
         // System fonts are an acceptable fallback.
     }
-    return [
-        `600 40px ${firstFamily(HEADING_FONT)}`,
-        `400 20px ${firstFamily(BODY_FONT)}`,
-        `500 20px ${firstFamily(BODY_FONT)}`,
-    ].every((spec) => {
-        try {
-            return document.fonts.check(spec);
-        } catch {
-            return false;
-        }
-    });
+    return faces.every(([family, weight]) => faceLoaded(family, weight));
 }
 
 function roundRect(
