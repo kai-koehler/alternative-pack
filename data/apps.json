@@ -19,7 +19,9 @@
                 { "id": "startmail", "name": "StartMail" },
                 { "id": "runbox", "name": "Runbox" },
                 { "id": "disroot_webmail", "name": "Disroot webmail" },
-                { "id": "murena_workspace", "name": "Murena Email" }
+                { "id": "murena_workspace", "name": "Murena Email" },
+                { "id": "thundermail", "name": "Thundermail" },
+                { "id": "all_inkl", "name": "All-Inkl Webmail" }
             ]
         },
         {
@@ -44,7 +46,8 @@
                 { "id": "filen", "name": "Filen" },
                 { "id": "photoprism", "name": "PhotoPrism" },
                 { "id": "fossify_gallery", "name": "Fossify Gallery" },
-                { "id": "murena_workspace", "name": "Murena Gallery" }
+                { "id": "murena_workspace", "name": "Murena Gallery" },
+                { "id": "ugreen_nas", "name": "UGREEN NAS Photos" }
             ]
         },
         {
@@ -120,7 +123,8 @@
                 { "id": "imessage", "name": "iMessage" },
                 { "id": "molly", "name": "Molly" },
                 { "id": "fossify_messages", "name": "Fossify Messages" },
-                { "id": "rocket_chat", "name": "Rocket.Chat" }
+                { "id": "rocket_chat", "name": "Rocket.Chat" },
+                { "id": "line", "name": "LINE" }
             ]
         },
         {
@@ -147,7 +151,8 @@
                 { "id": "joplin", "name": "Joplin" },
                 { "id": "fossify_notes", "name": "Fossify Notes" },
                 { "id": "murena_workspace", "name": "Murena Notes" },
-                { "id": "futo_notes", "name": "FUTO Notes" }
+                { "id": "futo_notes", "name": "FUTO Notes" },
+                { "id": "upnote", "name": "UpNote" }
             ]
         },
         {
@@ -174,7 +179,8 @@
                 { "id": "ente_locker", "name": "Ente Locker" },
                 { "id": "pcloud", "name": "pCloud" },
                 { "id": "syncthing", "name": "Syncthing" },
-                { "id": "murena_workspace", "name": "Murena Workspace" }
+                { "id": "murena_workspace", "name": "Murena Workspace" },
+                { "id": "ugreen_nas", "name": "UGREEN NAS" }
             ]
         },
         {
@@ -243,7 +249,8 @@
                 { "id": "nextcloud_calendar", "name": "Nextcloud Calendar" },
                 { "id": "radicale", "name": "Radicale" },
                 { "id": "fossify_calendar", "name": "Fossify Calendar" },
-                { "id": "murena_workspace", "name": "Murena Calendar" }
+                { "id": "murena_workspace", "name": "Murena Calendar" },
+                { "id": "all_inkl", "name": "All-Inkl CalDAV" }
             ]
         },
         {
@@ -256,7 +263,8 @@
             "private_alternatives": [
                 { "id": "fossify_contacts", "name": "Fossify Contacts" },
                 { "id": "proton_mail", "name": "Proton Contacts" },
-                { "id": "tuta_mail", "name": "Tuta Contacts" }
+                { "id": "tuta_mail", "name": "Tuta Contacts" },
+                { "id": "all_inkl", "name": "All-Inkl CardDAV" }
             ]
         },
         {
@@ -456,7 +464,10 @@
                 { "id": "cash", "name": "Cash" },
                 { "id": "apple_pay", "name": "Apple Pay" },
                 { "id": "monero", "name": "Monero" },
-                { "id": "zcash", "name": "Zcash" }
+                { "id": "zcash", "name": "Zcash" },
+                { "id": "wero", "name": "Wero" },
+                { "id": "bunq", "name": "bunq" },
+                { "id": "bank_transfer", "name": "Bank Transfer" }
             ]
         },
         {
@@ -514,7 +525,10 @@
                 { "id": "nixos", "name": "NixOS" },
                 { "id": "tiger_os", "name": "Tiger OS" },
                 { "id": "opensuse", "name": "openSUSE" },
-                { "id": "zorin_os", "name": "Zorin OS" }
+                { "id": "zorin_os", "name": "Zorin OS" },
+                { "id": "windows", "name": "Windows (for Gaming)" },
+                { "id": "bazzite", "name": "Bazzite" },
+                { "id": "cachyos", "name": "CachyOS" }
             ]
         },
         {
@@ -588,7 +602,8 @@
                 { "id": "cloudflare", "name": "Cloudflare Registrar" },
                 { "id": "njalla", "name": "Njalla" },
                 { "id": "1984_hosting", "name": "1984 Hosting" },
-                { "id": "orangewebsite", "name": "OrangeWebsite" }
+                { "id": "orangewebsite", "name": "OrangeWebsite" },
+                { "id": "all_inkl", "name": "All-Inkl" }
             ]
         },
         {
