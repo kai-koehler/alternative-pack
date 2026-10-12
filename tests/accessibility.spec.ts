@@ -65,7 +65,35 @@ function contrastOf(locator: Locator) {
 }
 
 const mailAlternatives = (page: Page) =>
-    page.getByRole("button", { name: /^Mail private alternatives:/ });
+    page.getByRole("button", { name: /^Mail alternatives:/ });
+
+/** Makes PNG encoding fail until `window.failExports` is set to false. */
+function failExports(page: Page) {
+    return page.addInitScript(() => {
+        const flags = window as unknown as { failExports: boolean };
+        const toBlob = HTMLCanvasElement.prototype.toBlob;
+        flags.failExports = true;
+        HTMLCanvasElement.prototype.toBlob = function (callback, ...rest) {
+            if (!flags.failExports) return toBlob.call(this, callback, ...rest);
+            setTimeout(() => callback(null));
+        };
+    });
+}
+
+const recoverExports = (page: Page) =>
+    page.evaluate(() => {
+        (window as unknown as { failExports: boolean }).failExports = false;
+    });
+
+// These tests load the page more than once. Each visit starts without saved
+// picks, as a first visit does; tests/alternative-pack.spec.ts covers saving.
+test.beforeEach(async ({ context }) => {
+    await context.addInitScript(() => {
+        try {
+            localStorage.removeItem("alternative-pack:v1");
+        } catch {}
+    });
+});
 
 test("menu text and home links meet WCAG AA contrast", async ({ page }) => {
     await page.goto("/create");
@@ -73,7 +101,7 @@ test("menu text and home links meet WCAG AA contrast", async ({ page }) => {
     const menu = page.getByRole("menu");
     await expect(menu).toBeVisible();
     expect(
-        await contrastOf(menu.getByText("Private alternatives")),
+        await contrastOf(menu.getByText("Alternatives", { exact: true })),
     ).toBeGreaterThanOrEqual(4.5);
     expect(await contrastOf(menu.getByText("0/3"))).toBeGreaterThanOrEqual(4.5);
 
@@ -84,16 +112,13 @@ test("menu text and home links meet WCAG AA contrast", async ({ page }) => {
     const remove = page.getByRole("menuitem", {
         name: "Remove all Mail alternatives",
     });
-    const removeLabel = remove.getByText("Remove", { exact: true });
-    // The label turns from grey to red once an alternative is picked.
-    await expect
-        .poll(() => contrastOf(removeLabel))
-        .toBeGreaterThanOrEqual(4.5);
+    // The label is dimmed until an alternative is picked.
+    await expect.poll(() => contrastOf(remove)).toBeGreaterThanOrEqual(4.5);
     await remove.focus();
-    expect(await contrastOf(removeLabel)).toBeGreaterThanOrEqual(4.5);
+    expect(await contrastOf(remove)).toBeGreaterThanOrEqual(4.5);
 
     await page.goto("/");
-    for (const name of ["Privacy", "Terms"]) {
+    for (const name of ["Imprint", "Privacy", "Terms"]) {
         expect(
             await contrastOf(page.getByRole("link", { name, exact: true })),
         ).toBeGreaterThanOrEqual(4.5);
@@ -115,7 +140,7 @@ test("forced-colors mode outlines only the focused picker or menu item", async (
     const outline = (locator: Locator) =>
         locator.evaluate((element) => getComputedStyle(element).outlineStyle);
     const mainstream = page.getByRole("button", {
-        name: /^Mail mainstream app:/,
+        name: /^Mail app you used before:/,
     });
     const alternatives = mailAlternatives(page);
 
@@ -150,7 +175,7 @@ test("forced-colors mode does not change the exported image", async ({
     const exportBrave = async () => {
         await page.goto("/create");
         await page
-            .getByRole("button", { name: /^Browser private alternatives:/ })
+            .getByRole("button", { name: /^Browser alternatives:/ })
             .click();
         await page
             .getByRole("menuitemcheckbox", { name: "Brave", exact: true })
@@ -158,7 +183,7 @@ test("forced-colors mode does not change the exported image", async ({
         await page.keyboard.press("Escape");
         const [download] = await Promise.all([
             page.waitForEvent("download"),
-            page.locator("#download-navbar").click(),
+            page.locator("#download-sidebar").click(),
         ]);
         return sharp(fs.readFileSync((await download.path())!))
             .removeAlpha()
@@ -174,58 +199,7 @@ test("forced-colors mode does not change the exported image", async ({
     // The page itself still follows forced colors.
     expect(await pageBackground()).not.toBe(expectedPageBackground);
 
-    const arrow = await page.evaluate(() => {
-        const card = document
-            .getElementById("privacy-pack-result-to-capture")!
-            .cloneNode(true) as HTMLElement;
-        card.style.cssText +=
-            ";display:block;position:fixed;left:-10000px;top:0";
-        document.body.appendChild(card);
-        try {
-            const origin = card.getBoundingClientRect();
-            const rect = card.querySelector("svg")!.getBoundingClientRect();
-            return {
-                left: rect.left - origin.left,
-                top: rect.top - origin.top,
-                width: rect.width,
-                height: rect.height,
-            };
-        } finally {
-            card.remove();
-        }
-    });
-    /** The lowest and highest channel values in a box of the 2x PNG. */
-    const channelRange = (box: typeof arrow) => {
-        let min = 255;
-        let max = 0;
-        for (
-            let y = Math.round(box.top * 2);
-            y < Math.round((box.top + box.height) * 2);
-            y++
-        ) {
-            const row = y * info.width * info.channels;
-            for (
-                let index = row + Math.round(box.left * 2) * info.channels;
-                index <
-                row + Math.round((box.left + box.width) * 2) * info.channels;
-                index++
-            ) {
-                min = Math.min(min, data[index]);
-                max = Math.max(max, data[index]);
-            }
-        }
-        return { min, max };
-    };
-    // The background stays #121212 and the arrow #e6e6e6 on it, rather than
-    // a forced white background behind the unadjusted light arrow.
-    const background = channelRange({ left: 0, top: 0, width: 20, height: 20 });
-    expect(background.min).toBeGreaterThanOrEqual(0x12 - 2);
-    expect(background.max).toBeLessThanOrEqual(0x12 + 2);
-    const arrowRange = channelRange(arrow);
-    expect(Math.abs(arrowRange.min - 0x12)).toBeLessThanOrEqual(2);
-    expect(Math.abs(arrowRange.max - 0xe6)).toBeLessThanOrEqual(2);
-
-    // Nothing else in the image changes either.
+    // The image is drawn on a canvas, which forced colors do not touch.
     expect(info).toEqual(expected.info);
     let differing = 0;
     for (let index = 0; index < data.length; index++) {
@@ -324,7 +298,7 @@ for (const [viewport, withError] of [
     // A landscape phone, and 400% zoom of a 1280x900 window.
     [{ width: 568, height: 320 }, false],
     [{ width: 320, height: 225 }, false],
-    // A failing logo keeps an error and Retry in the bar.
+    // A failing export keeps an error and Retry in the bar.
     [{ width: 375, height: 667 }, true],
     [{ width: 568, height: 320 }, true],
     [{ width: 320, height: 225 }, true],
@@ -333,11 +307,7 @@ for (const [viewport, withError] of [
         page,
     }) => {
         await page.setViewportSize(viewport);
-        if (withError) {
-            await page.route("**/app-logos/proton_mail.jpg*", (route) =>
-                route.abort(),
-            );
-        }
+        if (withError) await failExports(page);
         await page.goto("/create");
         if (withError) {
             await mailAlternatives(page).click();
@@ -389,7 +359,7 @@ for (const [viewport, withError] of [
     });
 }
 
-test("the header does not overflow while an image is preparing", async ({
+test("the sidebar buttons fit while an image is preparing", async ({
     page,
 }) => {
     // Hold one logo back so the preparing state lasts long enough to measure.
@@ -398,8 +368,8 @@ test("the header does not overflow while an image is preparing", async ({
         await route.continue();
     });
 
-    // Either side of md, where the header's label changes.
-    for (const width of [640, 700, 767, 768, 800]) {
+    // From the wide breakpoint, where the sidebar gets its own buttons.
+    for (const width of [960, 1024, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/create");
         await mailAlternatives(page).click();
@@ -408,7 +378,9 @@ test("the header does not overflow while an image is preparing", async ({
             .filter({ hasText: "Proton Mail" })
             .click();
         await page.keyboard.press("Escape");
-        await expect(page.locator("#share-navbar .animate-spin")).toBeVisible();
+        await expect(
+            page.locator("#share-sidebar .animate-spin"),
+        ).toBeVisible();
         expect(
             await page.evaluate(
                 () => document.documentElement.scrollWidth - window.innerWidth,
@@ -417,17 +389,23 @@ test("the header does not overflow while an image is preparing", async ({
         ).toBeLessThanOrEqual(0);
         // The spinner is hidden from assistive technology, so the names
         // must say the image is preparing.
+        await expect(page.locator("#share-sidebar")).toHaveAccessibleName(
+            "Share (preparing)",
+        );
+        await expect(page.locator("#download-sidebar")).toHaveAccessibleName(
+            "Download PNG (preparing)",
+        );
         for (const action of ["share", "download"]) {
-            await expect(
-                page.locator(`#${action}-navbar`),
-                `${width}px`,
-            ).toHaveAccessibleName(
-                width < 768
-                    ? `${action.toUpperCase()} (preparing)`
-                    : "PREPARING...",
-            );
+            expect(
+                await page
+                    .locator(`#${action}-sidebar`)
+                    .evaluate(
+                        (element) => element.scrollWidth - element.clientWidth,
+                    ),
+                `${action} at ${width}px`,
+            ).toBeLessThanOrEqual(0);
         }
-        await expect(page.locator("#share-navbar")).toBeEnabled();
+        await expect(page.locator("#share-sidebar")).toBeEnabled();
     }
 });
 
@@ -479,19 +457,19 @@ async function checkMobileBarWhilePreparing(page: Page, fontSize = 16) {
     await expect(share.locator(".animate-spin")).toBeVisible();
     await expect(download.locator(".animate-spin")).toBeVisible();
     await expectMobileBarFits(page, "while preparing", fontSize);
-    await expect(share).toHaveAccessibleName("SHARE (preparing)");
-    await expect(download).toHaveAccessibleName("DOWNLOAD (preparing)");
+    await expect(share).toHaveAccessibleName("Share (preparing)");
+    await expect(download).toHaveAccessibleName("Download (preparing)");
 
     release();
     await expect(share).toBeEnabled();
     await expectMobileBarFits(page, "once prepared", fontSize);
-    await expect(share).toHaveAccessibleName("SHARE");
-    await expect(download).toHaveAccessibleName("DOWNLOAD");
+    await expect(share).toHaveAccessibleName("Share");
+    await expect(download).toHaveAccessibleName("Download");
     await page.unroute("**/app-logos/proton_mail.jpg*");
 }
 
 for (const viewport of [
-    // 400% zoom of a 1280x900 window, where the buttons sit side by side.
+    // 400% zoom of a 1280x900 window.
     { width: 320, height: 225 },
     { width: 375, height: 667 },
     // A landscape phone.
@@ -516,8 +494,7 @@ test("the mobile export bar fits a larger default font while an image is prepari
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Page.setFontSizes", { fontSizes: { standard: 32 } });
 
-    // 800px is under 30rem, a short screen. At 16rem the buttons sit side
-    // by side; narrower, they stack.
+    // At 16rem the buttons sit side by side; narrower, they stack.
     for (const width of [512, 320]) {
         await page.setViewportSize({ width, height: 800 });
         await checkMobileBarWhilePreparing(page, 32);
@@ -561,8 +538,8 @@ async function checkMobileBarWhileSharing(page: Page, fontSize = 16) {
     await expectMobileBarFits(page, "while sharing", fontSize);
     // Share keeps focus, so its name says what it is doing.
     await expect(share).toBeFocused();
-    await expect(share).toHaveAccessibleName("SHARE (sharing)");
-    await expect(download).toHaveAccessibleName("DOWNLOAD");
+    await expect(share).toHaveAccessibleName("Share (sharing)");
+    await expect(download).toHaveAccessibleName("Download");
 
     await page.evaluate(() =>
         (window as unknown as { resolveShare: () => void }).resolveShare(),
@@ -570,13 +547,12 @@ async function checkMobileBarWhileSharing(page: Page, fontSize = 16) {
     await expect(share).toBeEnabled();
     await expectMobileBarFits(page, "once shared", fontSize);
     await expect(share).toBeFocused();
-    await expect(share).toHaveAccessibleName("SHARE");
-    await expect(download).toHaveAccessibleName("DOWNLOAD");
+    await expect(share).toHaveAccessibleName("Share");
+    await expect(download).toHaveAccessibleName("Download");
 }
 
 for (const viewport of [
-    // Side by side on short screens from 256px, where the buttons are
-    // narrowest.
+    // Side by side from 256px, where the buttons are narrowest.
     { width: 256, height: 400 },
     { width: 268, height: 225 },
     // 400% zoom of a 1280x900 window.
@@ -606,20 +582,20 @@ test("the mobile export bar fits a larger default font while sharing", async ({
     await checkMobileBarWhileSharing(page, 20);
 });
 
-async function checkHeaderWhileSharing(
+async function checkExportButtonsWhileSharing(
     page: Page,
     widths: number[],
     fontSize = 16,
 ) {
     await holdSharing(page);
-    await page.setViewportSize({ width: 40 * fontSize, height: 900 });
+    await page.setViewportSize({ width: 60 * fontSize, height: 900 });
     await page.goto("/create");
     await mailAlternatives(page).click();
     await page
         .getByRole("menuitemcheckbox", { name: "Proton Mail", exact: true })
         .click();
     await page.keyboard.press("Escape");
-    const share = page.locator("#share-navbar");
+    const share = page.locator("#share-sidebar");
     await expect(share).toBeEnabled();
 
     const expectFits = async (state: string) => {
@@ -635,10 +611,13 @@ async function checkHeaderWhileSharing(
                 geometry.overflow,
                 `${width}px ${state}`,
             ).toBeLessThanOrEqual(0);
-            // Cross sm in both directions while a share is pending, too.
-            const placement = width < 40 * fontSize ? "mobile" : "navbar";
+            // Cross the wide breakpoint in both directions while a share is
+            // pending, too.
+            const placement = width < 60 * fontSize ? "mobile" : "sidebar";
             for (const action of ["share", "download"]) {
                 const button = page.locator(`#${action}-${placement}`);
+                if (placement === "sidebar")
+                    await button.scrollIntoViewIfNeeded();
                 await expect(button).toBeInViewport({ ratio: 1 });
                 expect(
                     await button.evaluate(
@@ -646,9 +625,13 @@ async function checkHeaderWhileSharing(
                     ),
                 ).toBeLessThanOrEqual(0);
                 await expect(button).toHaveAccessibleName(
-                    action === "share" && state === "sharing"
-                        ? "SHARE (sharing)"
-                        : action.toUpperCase(),
+                    action === "share"
+                        ? state === "sharing"
+                            ? "Share (sharing)"
+                            : "Share"
+                        : placement === "mobile"
+                          ? "Download"
+                          : "Download PNG",
                 );
             }
         }
@@ -662,25 +645,25 @@ async function checkHeaderWhileSharing(
     await expect(share.locator(".animate-spin")).toBeVisible();
     await expectFits("sharing");
 
-    // Resizing across sm can hide the focused button; focus the visible
-    // header again to check that settling the share preserves its focus.
+    // Resizing across the breakpoint can hide the focused button; focus the
+    // sidebar's again to check that settling the share preserves its focus.
     await share.focus();
     await page.evaluate(() =>
         (window as unknown as { resolveShare: () => void }).resolveShare(),
     );
-    await expect(share).toHaveAccessibleName("SHARE");
+    await expect(share).toHaveAccessibleName("Share");
     await expect(share).toBeEnabled();
     await expect(share).toBeFocused();
     await expectFits("shared");
 }
 
-test("the header fits around its breakpoints while sharing", async ({
+test("the export buttons fit around the wide breakpoint while sharing", async ({
     page,
 }) => {
-    await checkHeaderWhileSharing(page, [639, 640, 657, 658, 767, 768]);
+    await checkExportButtonsWhileSharing(page, [959, 960, 1023, 1024, 1280]);
 });
 
-test("the header fits a larger default font while sharing", async ({
+test("the export buttons fit a larger default font while sharing", async ({
     page,
     browserName,
 }) => {
@@ -690,7 +673,7 @@ test("the header fits a larger default font while sharing", async ({
     );
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Page.setFontSizes", { fontSizes: { standard: 24 } });
-    await checkHeaderWhileSharing(page, [959, 960, 968, 969, 1151, 1152], 24);
+    await checkExportButtonsWhileSharing(page, [1439, 1440, 1600, 1920], 24);
 });
 
 /** How the pickers fail to fit the page at its current width, if they do. */
@@ -703,9 +686,9 @@ async function pickerFitProblems(page: Page, label: string) {
             return {
                 overflow:
                     document.documentElement.scrollWidth - window.innerWidth,
-                // The arrow is 24px wide unless it is squeezed.
+                // The arrow is 22px wide unless it is squeezed.
                 squeezedArrows: arrows.filter(
-                    (arrow) => arrow.getBoundingClientRect().width < 24,
+                    (arrow) => arrow.getBoundingClientRect().width < 21.5,
                 ).length,
                 spilledPickers: arrows.flatMap((arrow) => {
                     const card = arrow.parentElement!;
@@ -760,13 +743,11 @@ test("the pickers fit the page and keep their arrows at every width", async ({
     await expect(page.locator("[data-picker-arrow]")).toHaveCount(categories);
     const problems: string[] = [];
 
-    // Common screens, and either side of each width where the grid gains a
-    // column or larger logos.
-    // 280px, a folded phone's cover screen, is narrow enough to stack the
-    // pickers even at the default font.
+    // Common screens, and either side of the wide breakpoint, where the
+    // sidebar moves next to the categories.
     for (const width of [
-        280, 320, 375, 639, 640, 767, 768, 1023, 1024, 1279, 1280, 1366, 1423,
-        1424, 1440, 1536, 1550, 1600, 1680, 1871, 1872, 1920, 2560,
+        280, 320, 375, 414, 639, 640, 767, 768, 959, 960, 1023, 1024, 1279,
+        1280, 1366, 1440, 1536, 1920, 2560,
     ]) {
         await page.setViewportSize({ width, height: 900 });
         problems.push(...(await pickerFitProblems(page, `${width}px`)));
@@ -801,9 +782,6 @@ test("the page fits narrow screens with a larger default font", async ({
         ).toBe(`${fontSize}px`);
 
         for (const width of [320, 360, 375, 414, 480, 640, 768]) {
-            // A phone's height. With a 32px font that is under 30rem, a
-            // short screen, where the export bar's buttons go side by side
-            // if they fit.
             await page.setViewportSize({ width, height: 800 });
             // Chromium can drop the font size back to the default.
             const rootFontSize = await page.evaluate(
@@ -862,7 +840,7 @@ function menuFitProblems(menu: Locator, label: string) {
             }
         }
         // The alternatives menu shows how many are selected, as "0/3".
-        if (label.includes("private alternatives")) {
+        if (label.includes(" alternatives:")) {
             const selection = element.querySelector(
                 '[data-slot="dropdown-menu-label"] > :last-child',
             );
@@ -972,8 +950,13 @@ const longestWord = ({ name }: AppOption) =>
     Math.max(...name.split(" ").map((word) => word.length));
 
 /** Picker names that wrap inside a word or spill out of their picker. */
-async function pickerNameProblems(page: Page, label: string) {
+async function pickerNameProblems(
+    page: Page,
+    label: string,
+    { expectWrapping = true } = {},
+) {
     const problems: string[] = [];
+    let wrappedAnywhere = 0;
 
     // A folded phone's cover screen, common phones (the 402px one first
     // showed "mailbox.or" / "g"), and widths up to past the lg breakpoint.
@@ -1065,13 +1048,14 @@ async function pickerNameProblems(page: Page, label: string) {
             return { wrapped, issues: [...new Set(issues)] };
         });
 
-        // Long names wrap at every width checked, so the check saw lines.
-        if (wrapped === 0) {
-            problems.push(`${label} at ${width}px: no name wraps`);
-        }
+        wrappedAnywhere += wrapped;
         problems.push(
             ...issues.map((issue) => `${label} at ${width}px: ${issue}`),
         );
+    }
+    // Long names wrap at some widths, so the check saw lines.
+    if (expectWrapping && wrappedAnywhere === 0) {
+        problems.push(`${label}: no name wraps`);
     }
     return problems;
 }
@@ -1085,7 +1069,10 @@ test("picker names wrap only between words with the longest names", async ({
     await page.evaluate(() => document.fonts.ready);
     // Only the names matter, and these tests open many menus.
     await skipMenuAnimations(page);
-    const problems = await pickerNameProblems(page, "no alternatives");
+    // The default names are short and need not wrap.
+    const problems = await pickerNameProblems(page, "no alternatives", {
+        expectWrapping: false,
+    });
 
     for (const count of [1, 2, 3]) {
         for (const category of categories) {
@@ -1134,7 +1121,7 @@ test("picker names wrap only between words with the longest words", async ({
     // Break hints are markup, not characters, and the name read out is
     // the picker's label.
     await expect(mailAlternatives(page)).toHaveAccessibleName(
-        "Mail private alternatives: mailbox.org, StartMail; 2 of 3 selected",
+        "Mail alternatives: mailbox.org, Thundermail; 2 of 3 selected",
     );
     expect(
         await mailAlternatives(page)
@@ -1145,61 +1132,37 @@ test("picker names wrap only between words with the longest words", async ({
     expect(await pickerNameProblems(page, "longest words")).toEqual([]);
 });
 
-test("the off-screen capture copy is hidden from assistive technology", async ({
-    page,
-}) => {
-    await page.route("**/app-logos/proton_mail.jpg*", async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 1_500));
-        await route.continue();
-    });
-    await page.goto("/create");
-    await mailAlternatives(page).click();
-    await page
-        .getByRole("menuitemcheckbox")
-        .filter({ hasText: "Proton Mail" })
-        .click();
-    await page.keyboard.press("Escape");
-
-    const copy = page.locator("#privacy-pack-export-copy");
-    await expect(copy).toHaveCount(1);
-    expect(
-        await copy.evaluate((element) => {
-            const wrapper = element.parentElement!;
-            return {
-                ariaHidden: wrapper.getAttribute("aria-hidden"),
-                inert: wrapper.inert,
-            };
-        }),
-    ).toEqual({ ariaHidden: "true", inert: true });
-    await expect(page.locator("#download-navbar")).toBeEnabled();
-    await expect(copy).toHaveCount(0);
-});
-
 test("pickers and pages have descriptive names and titles", async ({
     page,
 }) => {
     await page.goto("/create");
-    await expect(page).toHaveTitle("Create your pack · PrivacyPack");
+    await expect(page).toHaveTitle("Create your pack · Alternative Pack");
     await expect(page.getByRole("main")).toHaveCount(1);
     await expect(
         page.getByRole("heading", {
             level: 1,
-            name: "Create your PrivacyPack",
+            name: "Create your Alternative Pack",
         }),
-    ).toBeAttached();
-    await expect(
-        page.getByRole("heading", { level: 2, name: "Mail" }),
     ).toBeVisible();
     await expect(
-        page.getByRole("button", { name: "Mail mainstream app: Gmail" }),
+        page.getByRole("heading", { level: 2, name: "Categories" }),
     ).toBeVisible();
-    // The accessible name includes the visible "[Pick]" label.
+    await expect(
+        page.getByRole("heading", { level: 2, name: "Your pack" }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole("heading", { level: 3, name: "Mail" }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole("button", { name: "Mail app you used before: Gmail" }),
+    ).toBeVisible();
+    // The accessible name includes the visible "Pick" label.
     await expect(mailAlternatives(page)).toHaveAccessibleName(
-        "Mail private alternatives: Pick; 0 of 3 selected",
+        "Mail alternatives: Pick; 0 of 3 selected",
     );
 
     await page
-        .getByRole("button", { name: "Mail mainstream app: Gmail" })
+        .getByRole("button", { name: "Mail app you used before: Gmail" })
         .click();
     await expect(
         page.getByRole("menuitemradio", { name: "Gmail", exact: true }),
@@ -1209,11 +1172,11 @@ test("pickers and pages have descriptive names and titles", async ({
     ).toHaveAttribute("aria-checked", "false");
 
     await page.goto("/privacy");
-    await expect(page).toHaveTitle("Privacy Policy · PrivacyPack");
+    await expect(page).toHaveTitle("Privacy Policy · Alternative Pack");
     await page.goto("/terms");
-    await expect(page).toHaveTitle("Terms and Conditions · PrivacyPack");
+    await expect(page).toHaveTitle("Terms and Conditions · Alternative Pack");
     await page.goto("/");
-    await expect(page).toHaveTitle("PrivacyPack");
+    await expect(page).toHaveTitle("Alternative Pack");
 });
 
 test("presses that end without a click do not swallow the next plain click", async ({
@@ -1277,11 +1240,7 @@ for (const withError of [false, true]) {
         // 400% zoom of a 1280x900 window. At these fonts the bar's stacked
         // buttons would cover most or all of it.
         await page.setViewportSize({ width: 320, height: 225 });
-        if (withError) {
-            await page.route("**/app-logos/proton_mail.jpg*", (route) =>
-                route.abort(),
-            );
-        }
+        if (withError) await failExports(page);
         const cdp = await page.context().newCDPSession(page);
         const bar = page.locator("#share-mobile").locator("xpath=../..");
         const pickers = page.locator(
@@ -1371,9 +1330,7 @@ for (const { font, width, height } of [
             'button[data-slot="dropdown-menu-trigger"]',
         );
         await page.setViewportSize({ width, height });
-        await page.route("**/app-logos/proton_mail.jpg*", (route) =>
-            route.abort(),
-        );
+        await failExports(page);
         await page.goto("/create");
         await expect(bar).toHaveCSS("position", "sticky");
 
@@ -1400,7 +1357,7 @@ for (const { font, width, height } of [
         const retry = alert.getByRole("button", { name: "Retry export" });
         await retry.focus();
         await expect(retry).toBeInViewport({ ratio: 1 });
-        for (const index of [0, 5, 27, 55]) {
+        for (const index of [0, 5, 27, 57]) {
             await pickers.nth(index).click({ trial: true });
         }
 
@@ -1415,7 +1372,7 @@ for (const { font, width, height } of [
         );
 
         // Clearing the error shrinks the bar back into a sticky control.
-        await page.unroute("**/app-logos/proton_mail.jpg*");
+        await recoverExports(page);
         await retry.click();
         await expect(page.locator("#share-mobile")).toBeEnabled();
         await expect(bar).toHaveCSS("position", "sticky");
@@ -1439,9 +1396,9 @@ for (const { font, width, height } of [
 test("a clipped message in the mobile bar scrolls from the keyboard", async ({
     page,
 }) => {
-    // 400% zoom of a 1280x900 window, with a blocked web font: the notice
-    // about the system font is longer than the bar shows.
-    await page.setViewportSize({ width: 320, height: 225 });
+    // A narrow, short screen, with a blocked web font: the notice about the
+    // system font is longer than the bar shows.
+    await page.setViewportSize({ width: 256, height: 225 });
     await page.route("**/_next/static/media/*.{ttf,woff2}*", (route) =>
         route.abort("blockedbyclient"),
     );

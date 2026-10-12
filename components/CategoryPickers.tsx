@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowRight, ChevronDown } from "lucide-react";
-import Image from "next/image";
 import React, { useRef } from "react";
+import AppLogo from "@/components/AppLogo";
+import { ArrowRightIcon, ChevronDownIcon, PlusIcon } from "@/components/icons";
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -15,63 +15,39 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { useTapToOpen } from "@/hooks/use-tap-to-open";
-import { getAssetUrl } from "@/lib/assets";
-import { fitPickerName } from "@/lib/fit-name";
 import {
     MAX_PRIVATE_ALTERNATIVES,
     getPrivateAlternativeLabel,
     type AppOption,
     type PackItem,
 } from "@/lib/pack";
+import { nameParts } from "@/lib/name-breaks";
+import { cn } from "@/lib/utils";
 
 const triggerClassName =
-    "flex h-full cursor-pointer touch-pan-y flex-col items-center rounded-2xl bg-[#2B2B2B] p-4 text-[#aeaeae] transition outline-none hover:bg-[#ededed] focus-visible:outline-hidden hover:text-black focus:bg-[#ededed] focus:text-black data-[state=open]:bg-[#ededed] data-[state=open]:text-black md:rounded-3xl";
-const triggerNameClassName =
-    "mt-5 max-w-18 text-center text-xs leading-tight font-medium break-words lg:max-w-24 lg:text-base picker-xl:max-w-28 picker-2xl:max-w-40";
-// The width and font size of triggerNameClassName at each breakpoint, in px
-// at the default font size.
-const triggerNameSlots = [
-    { width: 72, fontSize: 12 },
-    { width: 96, fontSize: 16 },
-    { width: 112, fontSize: 16 },
-    { width: 160, fontSize: 16 },
-];
+    "flex h-full w-full min-w-0 cursor-pointer touch-pan-y flex-col items-center gap-2 rounded-xl border border-transparent bg-layer-2 px-2 pt-3.5 pb-2 text-body transition-colors hover:border-brand hover:bg-layer-2-hover focus-visible:border-brand data-[state=open]:border-brand data-[state=open]:bg-layer-2-hover";
+const logoFrameClassName =
+    "relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-[14px]";
+const nameClassName =
+    "max-w-full text-center text-[0.8125rem] leading-tight font-medium break-words";
+const menuClassName =
+    "w-[min(16.25rem,calc(100vw-1.5rem))] rounded-[14px] p-0 shadow-[0_18px_48px_rgb(0_0_0/45%)]";
+const menuLabelClassName =
+    "bg-popover text-caption border-line-soft sticky top-0 z-10 [@media(max-height:30rem)]:static flex items-center justify-between gap-3 border-b px-3.5 pt-3 pb-2.5 text-xs font-medium";
 
-/** A picker's visible name, which wraps only between words or at a hint. */
-function TriggerName({ name }: { name: string }) {
-    const { parts, fontSizes } = fitPickerName(name, triggerNameSlots);
-    // In rem, like the slots, so the name follows the browser's font size.
-    const [size, sizeLg, sizeXl, size2xl] = fontSizes.map(
-        (fontSize) => `${fontSize / 16}rem`,
-    );
-
+/** A picker's visible name, which may also wrap at hints in long words. */
+function PickerName({ name, className }: { name: string; className?: string }) {
     return (
-        <div data-picker-name className={triggerNameClassName}>
-            {/* A smaller size is set on this inline span, so the lines keep
-                their height and the picker keeps its size. */}
-            <span
-                className="picker-xl:text-(length:--name-size-xl) picker-2xl:text-(length:--name-size-2xl) text-(length:--name-size) lg:text-(length:--name-size-lg)"
-                style={
-                    {
-                        "--name-size": size,
-                        "--name-size-lg": sizeLg,
-                        "--name-size-xl": sizeXl,
-                        "--name-size-2xl": size2xl,
-                    } as React.CSSProperties
-                }
-            >
-                {parts.map((part, index) => (
-                    <React.Fragment key={index}>
-                        {index > 0 && <wbr />}
-                        {part}
-                    </React.Fragment>
-                ))}
-            </span>
-        </div>
+        <span data-picker-name className={cn(nameClassName, className)}>
+            {nameParts(name).map((part, index) => (
+                <React.Fragment key={index}>
+                    {index > 0 && <wbr />}
+                    {part}
+                </React.Fragment>
+            ))}
+        </span>
     );
 }
-
-const logoSrc = (id: string) => getAssetUrl(`/app-logos/${id}.jpg`);
 
 type CategoryPickersProps = {
     item: PackItem;
@@ -116,20 +92,44 @@ export default function CategoryPickers({
         }
     };
     const selected = item.private_alternatives;
+    const picked = selected.length > 0;
     const mainKey = `${item.category}-main`;
     const altKey = `${item.category}-alt`;
-    // Includes the visible "[Pick]" label, so speech users can say "Pick".
-    const selectedNames =
-        selected.length > 0
-            ? selected.map((alternative) => alternative.name).join(", ")
-            : "Pick";
+    // Includes the visible "Pick" label, so speech users can say "Pick".
+    const selectedNames = picked
+        ? selected.map((alternative) => alternative.name).join(", ")
+        : "Pick";
+    const mainApp = {
+        id: item.mainstream_app_id,
+        name: item.mainstream_app_name,
+    };
 
     return (
-        <div data-category={item.category} className="flex flex-col gap-2">
-            <h2 className="mb-1 text-[#aeaeae]">{item.category}</h2>
-            {/* Stacked, with the arrow pointing down, where a larger
-                default font leaves no room for the pickers side by side. */}
-            <div className="xs:p-8 picker-row:flex-row flex h-full w-full flex-col items-center justify-between gap-y-2 rounded-3xl bg-[#fff]/2 p-3 sm:w-auto sm:justify-normal sm:gap-3 md:rounded-4xl">
+        <article
+            data-category={item.category}
+            data-picked={picked || undefined}
+            className="border-line-soft bg-layer hover:border-line data-picked:border-brand-200 flex min-w-0 flex-col gap-3.5 rounded-[18px] border px-[18px] pt-4 pb-[18px] transition-colors data-picked:bg-[linear-gradient(180deg,rgb(0_204_170/6%),transparent_60%)]"
+        >
+            <header className="flex items-center justify-between gap-2">
+                <h3 className="font-heading min-w-0 text-[0.9375rem] font-semibold break-words">
+                    {item.category}
+                </h3>
+                <span
+                    aria-hidden="true"
+                    className={cn(
+                        "shrink-0 rounded-full border px-[9px] py-[3px] text-xs leading-[1.4] font-medium",
+                        picked
+                            ? "border-brand/30 bg-brand/12 text-brand"
+                            : "border-line-soft text-caption",
+                    )}
+                >
+                    {selected.length}/{MAX_PRIVATE_ALTERNATIVES}
+                </span>
+            </header>
+
+            {/* Stacked, with the arrow pointing down, where a larger default
+                font leaves no room for the pickers side by side. */}
+            <div className="picker-row:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] grid grid-cols-1 items-stretch gap-2">
                 <DropdownMenu
                     modal={false}
                     open={openKey === mainKey}
@@ -139,23 +139,19 @@ export default function CategoryPickers({
                         <button
                             ref={mainTriggerRef}
                             type="button"
-                            aria-label={`${item.category} mainstream app: ${item.mainstream_app_name}`}
+                            aria-label={`${item.category} app you used before: ${item.mainstream_app_name}`}
                             {...getTriggerHandlers(mainKey)}
                             className={triggerClassName}
                         >
-                            <div className="picker-xl:h-28 picker-xl:w-28 picker-2xl:h-40 picker-2xl:w-40 h-18 w-18 lg:h-24 lg:w-24">
-                                <Image
-                                    src={logoSrc(item.mainstream_app_id)}
-                                    alt=""
-                                    width={0}
-                                    height={0}
-                                    sizes="100vw"
-                                    priority={item.order === 1}
-                                    className="h-full w-full rounded-xl object-cover md:rounded-2xl"
+                            <span className={logoFrameClassName}>
+                                <AppLogo
+                                    app={mainApp}
+                                    size={64}
+                                    priority={item.order <= 3}
                                 />
-                            </div>
-                            <TriggerName name={item.mainstream_app_name} />
-                            <ChevronDown className="mt-1 h-4 w-4" />
+                            </span>
+                            <PickerName name={item.mainstream_app_name} />
+                            <ChevronDownIcon className="text-caption mt-auto size-4" />
                         </button>
                     </DropdownMenuTrigger>
 
@@ -169,8 +165,13 @@ export default function CategoryPickers({
                         align="start"
                         side="bottom"
                         collisionPadding={menuCollisionPadding}
-                        className="rounded-2xl"
+                        className={menuClassName}
                     >
+                        <DropdownMenuLabel className={menuLabelClassName}>
+                            <span className="min-w-0 break-words">
+                                App you used before
+                            </span>
+                        </DropdownMenuLabel>
                         <DropdownMenuRadioGroup
                             value={item.mainstream_app_id}
                             onValueChange={(id) => {
@@ -181,36 +182,23 @@ export default function CategoryPickers({
                                     onSelectMainstreamApp(item.category, app);
                                 }
                             }}
+                            className="p-1.5"
                         >
                             {mainstreamApps.map((app) => (
                                 <DropdownMenuRadioItem
                                     key={app.id}
                                     value={app.id}
-                                    className="cursor-pointer rounded-lg py-2.5"
                                 >
-                                    <div className="h-5 w-5 shrink-0">
-                                        <Image
-                                            src={logoSrc(app.id)}
-                                            alt=""
-                                            width={0}
-                                            height={0}
-                                            sizes="100vw"
-                                            className="h-auto w-full rounded-sm"
-                                        />
-                                    </div>
-                                    <span className="min-w-0 text-xs break-words sm:text-sm">
-                                        {app.name}
-                                    </span>
+                                    <MenuAppName app={app} />
                                 </DropdownMenuRadioItem>
                             ))}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <ArrowRight
+                <ArrowRightIcon
                     data-picker-arrow
-                    className="picker-row:rotate-0 shrink-0 rotate-90 text-[#aeaeae] transition"
-                    aria-hidden="true"
+                    className="picker-row:rotate-0 text-brand size-[22px] shrink-0 rotate-90 self-center justify-self-center"
                 />
 
                 <DropdownMenu
@@ -222,54 +210,49 @@ export default function CategoryPickers({
                         <button
                             ref={altTriggerRef}
                             type="button"
-                            aria-label={`${item.category} private alternatives: ${selectedNames}; ${selected.length} of ${MAX_PRIVATE_ALTERNATIVES} selected`}
+                            aria-label={`${item.category} alternatives: ${selectedNames}; ${selected.length} of ${MAX_PRIVATE_ALTERNATIVES} selected`}
                             {...getTriggerHandlers(altKey)}
                             className={triggerClassName}
                         >
-                            <div
-                                className={`picker-xl:h-28 picker-xl:w-28 picker-2xl:h-40 picker-2xl:w-40 h-18 w-18 rounded-xl md:rounded-2xl lg:h-24 lg:w-24 ${
-                                    selected.length === 0 ? "bg-[#383838]" : ""
-                                } ${
-                                    selected.length > 1
-                                        ? "grid grid-cols-2 place-items-center gap-1 p-1"
-                                        : ""
-                                } relative overflow-hidden`}
+                            <span
+                                className={cn(
+                                    logoFrameClassName,
+                                    !picked &&
+                                        "border-line text-caption border-[1.5px] border-dashed",
+                                    selected.length > 1 &&
+                                        "grid-cols-2 gap-[3px] rounded-xl",
+                                )}
                             >
-                                {selected.map((alternative) => (
-                                    <div
-                                        key={alternative.id}
-                                        className={`overflow-hidden rounded-xl md:rounded-2xl ${
-                                            selected.length > 1
-                                                ? "aspect-square w-full bg-white/5"
-                                                : "h-full w-full"
-                                        }`}
-                                    >
-                                        <Image
-                                            src={logoSrc(alternative.id)}
-                                            alt=""
-                                            width={0}
-                                            height={0}
-                                            sizes={
+                                {picked ? (
+                                    selected.map((alternative) => (
+                                        <span
+                                            key={alternative.id}
+                                            className={cn(
+                                                "block overflow-hidden",
                                                 selected.length > 1
-                                                    ? "56px"
-                                                    : "160px"
-                                            }
-                                            className={`h-full w-full ${
-                                                selected.length > 1
-                                                    ? "object-contain"
-                                                    : "object-cover"
-                                            }`}
-                                        />
-                                    </div>
-                                ))}
-                                <span className="absolute top-1 right-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] leading-none font-semibold text-white">
-                                    {selected.length}/{MAX_PRIVATE_ALTERNATIVES}
-                                </span>
-                            </div>
-                            <TriggerName
+                                                    ? "aspect-square w-full rounded-[7px]"
+                                                    : "h-full w-full",
+                                            )}
+                                        >
+                                            <AppLogo
+                                                app={alternative}
+                                                size={
+                                                    selected.length > 1
+                                                        ? 32
+                                                        : 64
+                                                }
+                                            />
+                                        </span>
+                                    ))
+                                ) : (
+                                    <PlusIcon className="size-6" />
+                                )}
+                            </span>
+                            <PickerName
                                 name={getPrivateAlternativeLabel(selected)}
+                                className={picked ? undefined : "text-caption"}
                             />
-                            <ChevronDown className="mt-1 h-4 w-4" />
+                            <ChevronDownIcon className="text-caption mt-auto size-4" />
                         </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
@@ -282,94 +265,73 @@ export default function CategoryPickers({
                         align="end"
                         side="bottom"
                         collisionPadding={menuCollisionPadding}
-                        className="rounded-2xl"
+                        className={menuClassName}
                     >
-                        <DropdownMenuLabel className="flex items-center justify-between gap-4 text-xs text-[#6b6b6b]">
+                        <DropdownMenuLabel className={menuLabelClassName}>
                             <span className="min-w-0 break-words">
-                                Private alternatives
+                                Alternatives
                             </span>
                             <span className="shrink-0">
                                 {selected.length}/{MAX_PRIVATE_ALTERNATIVES}
                             </span>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {privateAlternatives.map((alternative) => {
-                            const isSelected = selected.some(
-                                ({ id }) => id === alternative.id,
-                            );
+                        <div className="p-1.5">
+                            {privateAlternatives.map((alternative) => {
+                                const isSelected = selected.some(
+                                    ({ id }) => id === alternative.id,
+                                );
 
-                            return (
-                                <DropdownMenuCheckboxItem
-                                    key={alternative.id}
-                                    checked={isSelected}
-                                    disabled={
-                                        !isSelected &&
-                                        selected.length >=
-                                            MAX_PRIVATE_ALTERNATIVES
-                                    }
-                                    onSelect={(event) => {
-                                        event.preventDefault();
-                                        onTogglePrivateAlternative(
-                                            item.category,
-                                            alternative,
-                                        );
-                                    }}
-                                    className={`cursor-pointer rounded-lg ${
-                                        isSelected
-                                            ? "bg-accent text-accent-foreground"
-                                            : ""
-                                    }`}
-                                >
-                                    <div className="flex w-full min-w-0 flex-row items-center gap-2 pl-1">
-                                        <div className="h-5 w-5 shrink-0">
-                                            <Image
-                                                src={logoSrc(alternative.id)}
-                                                alt=""
-                                                width={0}
-                                                height={0}
-                                                sizes="100vw"
-                                                className="h-auto w-full rounded-sm"
-                                            />
-                                        </div>
-                                        <span className="min-w-0 text-xs break-words sm:text-sm">
-                                            {alternative.name}
-                                        </span>
-                                    </div>
-                                </DropdownMenuCheckboxItem>
-                            );
-                        })}
+                                return (
+                                    <DropdownMenuCheckboxItem
+                                        key={alternative.id}
+                                        checked={isSelected}
+                                        disabled={
+                                            !isSelected &&
+                                            selected.length >=
+                                                MAX_PRIVATE_ALTERNATIVES
+                                        }
+                                        onSelect={(event) => {
+                                            event.preventDefault();
+                                            onTogglePrivateAlternative(
+                                                item.category,
+                                                alternative,
+                                            );
+                                        }}
+                                    >
+                                        <MenuAppName app={alternative} />
+                                    </DropdownMenuCheckboxItem>
+                                );
+                            })}
+                        </div>
                         {/* Set apart: at the cap, ArrowDown from the last
                             pick skips the disabled options straight to it. */}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            aria-label={`Remove all ${item.category} alternatives`}
-                            disabled={selected.length === 0}
-                            onSelect={() =>
-                                onClearPrivateAlternatives(item.category)
-                            }
-                            className="cursor-pointer rounded-lg data-[disabled]:opacity-100"
-                        >
-                            <div
-                                className={`flex flex-row items-center gap-2 ${
-                                    selected.length > 0
-                                        ? "text-red-700"
-                                        : "text-[#aeaeae]"
-                                }`}
+                        <DropdownMenuSeparator className="bg-line-soft mx-0 my-0" />
+                        <div className="bg-popover sticky bottom-0 p-1.5 [@media(max-height:30rem)]:static">
+                            <DropdownMenuItem
+                                aria-label={`Remove all ${item.category} alternatives`}
+                                disabled={!picked}
+                                onSelect={() =>
+                                    onClearPrivateAlternatives(item.category)
+                                }
+                                className="text-caption focus:bg-layer-2 focus:text-heading cursor-pointer justify-center rounded-lg py-2 text-[0.8125rem] data-[disabled]:opacity-40"
                             >
-                                <div
-                                    aria-hidden="true"
-                                    className="h-5 w-5 pl-1"
-                                >
-                                    —
-                                </div>
-                                <span className="text-xs sm:text-sm">
-                                    Remove
-                                </span>
-                            </div>
-                        </DropdownMenuItem>
+                                Remove all
+                            </DropdownMenuItem>
+                        </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-        </div>
+        </article>
+    );
+}
+
+function MenuAppName({ app }: { app: AppOption }) {
+    return (
+        <>
+            <span className="size-[26px] shrink-0 overflow-hidden rounded-[7px] text-xs">
+                <AppLogo app={app} size={26} />
+            </span>
+            <span className="min-w-0 flex-1 break-words">{app.name}</span>
+        </>
     );
 }

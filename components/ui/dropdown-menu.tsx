@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 
+import { CheckIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 function DropdownMenu({
@@ -87,15 +88,12 @@ function DropdownMenuContent({
                     if (!event.defaultPrevented) tabOutOfMenu(event);
                 }}
                 className={cn(
-                    // Portalled to <body>, outside the page font's wrapper
-                    // (app/layout.tsx).
-                    "font-(family-name:--font-jetbrains-mono)",
                     // No open or close animation for reduced motion, so a
                     // closing menu unmounts at once. data-[state] matches the
                     // specificity of the data-[state=...] animations below,
                     // which Tailwind emits before it.
                     "motion-reduce:data-[state]:animate-none",
-                    "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-dropdown-menu-content-available-height) max-w-(--radix-dropdown-menu-content-available-width) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto border p-1 shadow-md",
+                    "bg-popover text-popover-foreground border-line data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-dropdown-menu-content-available-height) max-w-(--radix-dropdown-menu-content-available-width) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto border p-1 shadow-md",
                     className,
                 )}
                 {...props}
@@ -138,6 +136,12 @@ function DropdownMenuItem({
     );
 }
 
+// Checkbox and radio items show their state in a box at the end of the row.
+const choiceItemClassName =
+    "group text-body focus:bg-layer-2 focus:text-heading data-[state=checked]:bg-brand-100 data-[state=checked]:text-heading relative flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-[7px] text-sm outline-none select-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset data-[disabled]:pointer-events-none data-[disabled]:opacity-40 [&_svg]:pointer-events-none [&_svg]:shrink-0";
+const choiceIndicatorClassName =
+    "border-line text-page group-data-[state=checked]:border-brand group-data-[state=checked]:bg-brand grid size-[18px] shrink-0 place-items-center border-[1.5px]";
+
 function DropdownMenuCheckboxItem({
     className,
     children,
@@ -147,19 +151,19 @@ function DropdownMenuCheckboxItem({
     return (
         <DropdownMenuPrimitive.CheckboxItem
             data-slot="dropdown-menu-checkbox-item"
-            className={cn(
-                "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 py-1.5 pr-2 pl-8 text-sm outline-none select-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-inset data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-                className,
-            )}
+            className={cn(choiceItemClassName, className)}
             checked={checked}
             {...props}
         >
-            <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+            {children}
+            <span
+                aria-hidden="true"
+                className={cn(choiceIndicatorClassName, "rounded-[5px]")}
+            >
                 <DropdownMenuPrimitive.ItemIndicator>
-                    <CheckIcon className="size-4" />
+                    <CheckIcon className="size-3.5" />
                 </DropdownMenuPrimitive.ItemIndicator>
             </span>
-            {children}
         </DropdownMenuPrimitive.CheckboxItem>
     );
 }
@@ -183,18 +187,18 @@ function DropdownMenuRadioItem({
     return (
         <DropdownMenuPrimitive.RadioItem
             data-slot="dropdown-menu-radio-item"
-            className={cn(
-                "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 py-1.5 pr-2 pl-8 text-sm outline-none select-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-inset data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-                className,
-            )}
+            className={cn(choiceItemClassName, className)}
             {...props}
         >
-            <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+            {children}
+            <span
+                aria-hidden="true"
+                className={cn(choiceIndicatorClassName, "rounded-full")}
+            >
                 <DropdownMenuPrimitive.ItemIndicator>
-                    <CircleIcon className="size-2 fill-current" />
+                    <CheckIcon className="size-3.5" />
                 </DropdownMenuPrimitive.ItemIndicator>
             </span>
-            {children}
         </DropdownMenuPrimitive.RadioItem>
     );
 }
@@ -288,7 +292,7 @@ function DropdownMenuSubContent({
         <DropdownMenuPrimitive.SubContent
             data-slot="dropdown-menu-sub-content"
             className={cn(
-                "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden border p-1 shadow-lg",
+                "bg-popover text-popover-foreground border-line data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden border p-1 shadow-lg",
                 className,
             )}
             {...props}

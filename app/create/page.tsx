@@ -5,23 +5,34 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import CategoryPickers from "@/components/CategoryPickers";
 import ExportButton from "@/components/ExportButton";
 import ExportFeedback from "@/components/ExportFeedback";
-import PrivacyPackResult from "@/components/PrivacyPackResult";
+import PackPreview from "@/components/PackPreview";
+import SiteFooter, { footerLinkClassName } from "@/components/SiteFooter";
+import { ArrowLeftIcon, ResetIcon, SearchIcon } from "@/components/icons";
 import data from "../../data/apps.json";
 import { usePackImage } from "@/hooks/use-pack-image";
 import { useTapToOpen } from "@/hooks/use-tap-to-open";
 import {
+    PACK_STORAGE_KEY,
     clearPrivateAlternatives,
     createInitialPack,
     getSelectedPack,
+    hasPicks,
+    matchesFilter,
+    restorePack,
     selectMainstreamApp,
+    serializePack,
     sortByName,
     sortCategories,
     togglePrivateAlternative,
     type AppOption,
 } from "@/lib/pack";
 import { downloadImage, shareImage } from "@/lib/share-image";
+import { CATALOG_REPO_URL } from "@/lib/site";
 
 const categories = sortCategories(data.categories);
+const categoriesByName = new Map(
+    categories.map((category) => [category.name, category]),
+);
 const sortedOptions = new Map(
     categories.map((category) => [
         category.name,
@@ -34,7 +45,16 @@ const sortedOptions = new Map(
 
 const EXPORT_FAILED = "Export failed. Please try again.";
 const SYSTEM_FONT_NOTICE =
-    "The PrivacyPack font didn't load, so this image uses a system font.";
+    "The Alternative Pack fonts didn't load, so this image uses a system font.";
+
+function readSavedPack() {
+    try {
+        return JSON.parse(localStorage.getItem(PACK_STORAGE_KEY) ?? "null");
+    } catch {
+        // Storage can be unavailable (private mode) or hold something else.
+        return null;
+    }
+}
 
 type ActionMessage = { type: "status" | "error"; text: string };
 
@@ -43,6 +63,10 @@ const isRendered = (element: HTMLElement | null) =>
 
 export default function App() {
     const [pack, setPack] = useState(() => createInitialPack(categories));
+    // Saved picks are restored after the first render, which the static
+    // export prerenders without them.
+    const [restored, setRestored] = useState(false);
+    const [filter, setFilter] = useState("");
     // Only one picker can be open. Image capture waits while one is.
     const [openKey, setOpenKey] = useState<string | null>(null);
     const currentOpenKey = useRef<string | null>(null);
@@ -64,15 +88,41 @@ export default function App() {
         null,
     );
     const [retryPending, setRetryPending] = useState(false);
-    const shareNavbarRef = useRef<HTMLButtonElement>(null);
+    const shareSidebarRef = useRef<HTMLButtonElement>(null);
     const shareMobileRef = useRef<HTMLButtonElement>(null);
     const exportBarRef = useRef<HTMLDivElement>(null);
-    // Space open menus leave for the mobile bar, so a tap aimed at SHARE
+    // Space open menus leave for the mobile bar, so a tap aimed at Share
     // cannot land on a menu item. 0 when the bar is hidden or static, and
     // on short screens, where a menu needs every pixel to stay usable.
     const [menuBottomReserve, setMenuBottomReserve] = useState(0);
     // Short screens clip long feedback in the bar into a small scroller.
     const [shortScreen, setShortScreen] = useState(false);
+
+    useEffect(() => {
+        const saved = readSavedPack();
+        // A deliberate re-render after hydration, with the saved picks.
+        /* eslint-disable react-hooks/set-state-in-effect */
+        if (saved) setPack(restorePack(categories, saved));
+        setRestored(true);
+        /* eslint-enable react-hooks/set-state-in-effect */
+    }, []);
+
+    useEffect(() => {
+        if (!restored) return;
+        try {
+            // Nothing is stored until something is picked, or after Reset.
+            if (hasPicks(pack, categories)) {
+                localStorage.setItem(
+                    PACK_STORAGE_KEY,
+                    JSON.stringify(serializePack(pack)),
+                );
+            } else {
+                localStorage.removeItem(PACK_STORAGE_KEY);
+            }
+        } catch {
+            // Without storage, picks last for this visit.
+        }
+    }, [pack, restored]);
 
     useEffect(() => {
         currentOpenKey.current = openKey;
@@ -122,9 +172,10 @@ export default function App() {
             readyImage &&
             document.activeElement?.closest("[data-export-feedback]")
         ) {
-            const share = [shareNavbarRef.current, shareMobileRef.current].find(
-                isRendered,
-            );
+            const share = [
+                shareSidebarRef.current,
+                shareMobileRef.current,
+            ].find(isRendered);
             share?.focus();
         }
         // A deliberate re-render before paint: Retry unmounts only after
@@ -186,6 +237,19 @@ export default function App() {
 
     const handleClearPrivateAlternatives = (category: string) => {
         updatePack((current) => clearPrivateAlternatives(current, category));
+        setOpenKey(null);
+    };
+
+    const handleFilterChange = (value: string) => {
+        setFilter(value);
+        setOpenKey(null);
+    };
+
+    const handleReset = () => {
+        if (!window.confirm("Reset all picks? Your pack will be cleared.")) {
+            return;
+        }
+        updatePack(() => createInitialPack(categories));
         setOpenKey(null);
     };
 
@@ -273,131 +337,228 @@ export default function App() {
         canExport,
     };
 
-    return (
-        <>
-            <div className="flex min-h-dvh w-full flex-col p-4 pb-0 sm:pb-4">
-                {/* Below sm a larger default font can leave no room for the
-                    wordmark and link side by side. The link then wraps under
-                    the wordmark, which breaks before "Pack". From sm, where
-                    the export buttons join them, neither wraps. */}
-                <div className="flex w-full flex-row items-center justify-between gap-y-2 max-sm:flex-wrap md:px-4 md:pt-4">
-                    <Link
-                        href="/"
-                        className="green-text pr-1 text-2xl font-bold sm:shrink-0"
-                    >
-                        Privacy
-                        <wbr />
-                        Pack
-                    </Link>
-                    <div
-                        onPointerDownCapture={closePicker}
-                        className="flex flex-row items-center gap-3 sm:gap-4"
-                    >
-                        <a
-                            href="https://github.com/ente/privacypack?tab=readme-ov-file#add-a-missing-app"
-                            target="_blank"
-                            rel="noopener"
-                            className="text-sm whitespace-nowrap text-[#868686] underline decoration-[#525252] underline-offset-4 hover:text-white hover:decoration-white"
-                        >
-                            <span className="xs:hidden">Add app</span>
-                            <span className="xs:inline hidden">
-                                Add a missing app
-                            </span>
-                        </a>
-                        <ExportButton
-                            ref={shareNavbarRef}
-                            action="share"
-                            tone="dark"
-                            placement="navbar"
-                            onClick={runShare}
-                            busy={isSharing}
-                            {...exportButtonState}
-                        />
-                        <ExportButton
-                            action="download"
-                            tone="light"
-                            placement="navbar"
-                            onClick={runDownload}
-                            {...exportButtonState}
-                        />
-                    </div>
-                </div>
+    const visibleItems = pack.filter((item) =>
+        matchesFilter(categoriesByName.get(item.category)!, filter),
+    );
+    const switchCount = selectedPack.length;
 
-                {/* Desktop feedback sits under the export buttons. Only one
-                    copy is displayed, so only one is announced. */}
+    return (
+        <div className="flex min-h-dvh w-full flex-col">
+            <main className="mx-auto w-[min(81rem,calc(100%-2.5rem))] pt-10 pb-16 max-sm:w-[calc(100%-2rem)] max-sm:pt-6">
+                <Link
+                    href="/"
+                    className="text-caption hover:text-brand inline-flex items-center gap-1.5 text-sm font-medium no-underline transition-colors"
+                >
+                    <ArrowLeftIcon className="size-[18px]" />
+                    Home
+                </Link>
+
+                <header className="mt-[clamp(2rem,9vh,6rem)] mb-10 max-w-[47.5rem]">
+                    <p className="text-brand mb-4 inline-flex items-center gap-2.5 text-[0.8125rem] font-medium tracking-[0.08em] uppercase">
+                        <span
+                            aria-hidden="true"
+                            className="bg-brand size-2 rounded-full shadow-[0_0_0_4px_rgb(0_204_170/18%)]"
+                        />
+                        Generator
+                    </p>
+                    <h1 className="font-heading text-[clamp(2.125rem,5.4vw,3.5rem)] leading-[1.1] font-semibold tracking-[-0.02em] break-words hyphens-auto">
+                        Create your{" "}
+                        <span className="text-brand">Alternative Pack</span>
+                    </h1>
+                    <p className="text-caption mt-[1.125rem] max-w-[38.75rem] text-[1.0625rem]">
+                        Pick the mainstream apps you used before, choose up to
+                        three alternative tools you switched to, and share your
+                        pack as an image.
+                    </p>
+                </header>
+
+                <div className="wide:grid-cols-[minmax(0,1fr)_21.25rem] grid grid-cols-1 items-start gap-6">
+                    <section aria-labelledby="categories-title">
+                        <div className="mb-4 flex items-center justify-between gap-4 max-sm:flex-col max-sm:items-stretch">
+                            <h2
+                                id="categories-title"
+                                className="font-heading text-lg font-semibold"
+                            >
+                                Categories
+                            </h2>
+                            <label className="border-line bg-layer text-caption focus-within:border-brand flex h-11 w-[min(20rem,100%)] items-center gap-2 rounded-xl border px-3.5 transition-colors max-sm:w-full">
+                                <span className="sr-only">
+                                    Filter categories and apps
+                                </span>
+                                <SearchIcon className="size-5" />
+                                <input
+                                    id="filter-input"
+                                    type="search"
+                                    value={filter}
+                                    onChange={(event) =>
+                                        handleFilterChange(event.target.value)
+                                    }
+                                    placeholder="Filter categories or apps"
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    className="text-heading placeholder:text-subtle min-w-0 flex-1 border-0 bg-transparent text-sm outline-0"
+                                />
+                            </label>
+                        </div>
+                        {visibleItems.length === 0 && (
+                            <p className="border-line text-caption rounded-[18px] border border-dashed p-8 text-center">
+                                No category matches your filter.
+                            </p>
+                        )}
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,17.5rem),1fr))] gap-3">
+                            {visibleItems.map((item) => (
+                                <CategoryPickers
+                                    key={item.category}
+                                    item={item}
+                                    {...sortedOptions.get(item.category)!}
+                                    openKey={openKey}
+                                    onOpenChange={handleOpenChange}
+                                    onCloseAutoFocus={handleCloseAutoFocus}
+                                    getTriggerHandlers={getTriggerHandlers}
+                                    onSelectMainstreamApp={
+                                        handleSelectMainstreamApp
+                                    }
+                                    onTogglePrivateAlternative={
+                                        handleTogglePrivateAlternative
+                                    }
+                                    onClearPrivateAlternatives={
+                                        handleClearPrivateAlternatives
+                                    }
+                                    menuCollisionPadding={{
+                                        bottom: menuBottomReserve,
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </section>
+
+                    <aside
+                        aria-labelledby="pack-title"
+                        className="wide:sticky wide:top-6 flex flex-col gap-3.5"
+                    >
+                        <div className="border-line bg-layer flex flex-col gap-4 rounded-[18px] border p-[18px]">
+                            <div className="flex items-center justify-between gap-3">
+                                <h2
+                                    id="pack-title"
+                                    className="font-heading text-lg font-semibold"
+                                >
+                                    Your pack
+                                </h2>
+                                <span
+                                    id="pack-count"
+                                    className="border-brand/30 bg-brand/12 text-brand shrink-0 rounded-full border px-[9px] py-[3px] text-xs leading-[1.4] font-medium"
+                                >
+                                    {switchCount === 1
+                                        ? "1 switch"
+                                        : `${switchCount} switches`}
+                                </span>
+                            </div>
+
+                            <div className="border-line-soft bg-page wide:max-w-none mx-auto aspect-square w-full max-w-[32.5rem] overflow-hidden rounded-xl border">
+                                <PackPreview
+                                    pack={selectedPack}
+                                    className="block h-full w-full"
+                                />
+                            </div>
+
+                            <div
+                                onPointerDownCapture={closePicker}
+                                className="wide:grid hidden grid-cols-2 gap-2"
+                            >
+                                <ExportButton
+                                    ref={shareSidebarRef}
+                                    action="share"
+                                    tone="primary"
+                                    placement="sidebar"
+                                    onClick={runShare}
+                                    busy={isSharing}
+                                    {...exportButtonState}
+                                />
+                                <ExportButton
+                                    action="download"
+                                    tone="secondary"
+                                    placement="sidebar"
+                                    onClick={runDownload}
+                                    {...exportButtonState}
+                                />
+                            </div>
+
+                            {/* Only one copy of the feedback is displayed, so
+                                only one is announced. */}
+                            <ExportFeedback
+                                {...feedback}
+                                placement="sidebar"
+                                className={`wide:block hidden ${
+                                    feedback.status || feedback.error
+                                        ? "-mt-1.5"
+                                        : "-mt-4"
+                                }`}
+                            />
+
+                            <button
+                                type="button"
+                                onClick={handleReset}
+                                disabled={!hasPicks(pack, categories)}
+                                className="text-caption enabled:hover:text-heading inline-flex cursor-pointer items-center justify-center gap-1.5 self-center p-1 text-[0.8125rem] disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                                <ResetIcon className="size-4" />
+                                Reset all picks
+                            </button>
+                        </div>
+
+                        <SiteFooter
+                            extra={
+                                <a
+                                    href={`${CATALOG_REPO_URL}#add-a-missing-app`}
+                                    target="_blank"
+                                    rel="noopener"
+                                    className={footerLinkClassName}
+                                >
+                                    Add a missing app
+                                </a>
+                            }
+                        />
+                    </aside>
+                </div>
+            </main>
+
+            {/* Sticky in the page flow, so it never covers the end of the
+                page and grows with its feedback. Where its buttons would take
+                half the screen (a larger default font on a short screen), it
+                stays at the end of the page instead, as in globals.css. */}
+            <div
+                ref={exportBarRef}
+                onPointerDownCapture={closePicker}
+                className="border-line-soft wide:hidden sticky bottom-0 z-40 mt-auto border-t bg-[rgb(17_19_23/92%)] px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-md max-sm:px-4 [@media(max-height:10rem)]:static [@media(max-height:17.5rem)_and_(max-width:15.999rem)]:static"
+            >
                 <ExportFeedback
                     {...feedback}
-                    placement="navbar"
-                    className="hidden sm:block"
-                    messageClassName="mt-4"
+                    placement="mobile"
+                    messageClassName="mb-2.5"
+                    // On short screens a long message scrolls inside the bar
+                    // rather than covering the page.
+                    textClassName="[@media(max-height:30rem)]:block [@media(max-height:30rem)]:max-h-10 [@media(max-height:30rem)]:overflow-y-auto"
+                    scrollableText={shortScreen}
                 />
-
-                <main className="picker-xl:my-24 picker-xl:grid-cols-3 picker-xl:gap-20 picker-2xl:my-32 picker-2xl:gap-40 mt-16 mb-10 grid grid-cols-1 gap-14 sm:mx-auto md:grid-cols-2 md:gap-20 lg:my-24 lg:gap-28">
-                    <h1 className="sr-only">Create your PrivacyPack</h1>
-                    {pack.map((item) => (
-                        <CategoryPickers
-                            key={item.category}
-                            item={item}
-                            {...sortedOptions.get(item.category)!}
-                            openKey={openKey}
-                            onOpenChange={handleOpenChange}
-                            onCloseAutoFocus={handleCloseAutoFocus}
-                            getTriggerHandlers={getTriggerHandlers}
-                            onSelectMainstreamApp={handleSelectMainstreamApp}
-                            onTogglePrivateAlternative={
-                                handleTogglePrivateAlternative
-                            }
-                            onClearPrivateAlternatives={
-                                handleClearPrivateAlternatives
-                            }
-                            menuCollisionPadding={{ bottom: menuBottomReserve }}
-                        />
-                    ))}
-                </main>
-
-                {/* Sticky in the page flow, so it never covers the last row
-                    and grows with its feedback. Where its buttons would take
-                    half the screen (a larger default font on a short screen),
-                    it stays at the end of the page instead, as in
-                    globals.css. */}
-                <div
-                    ref={exportBarRef}
-                    onPointerDownCapture={closePicker}
-                    className="sticky bottom-0 z-40 -mx-4 mt-auto border-t border-white/10 bg-[#161616] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:hidden [@media(max-height:10rem)]:static [@media(max-height:17.5rem)_and_(max-width:15.999rem)]:static"
-                >
-                    <ExportFeedback
-                        {...feedback}
+                <div className="grid grid-cols-1 gap-2 min-[16rem]:grid-cols-2">
+                    <ExportButton
+                        ref={shareMobileRef}
+                        action="share"
+                        tone="primary"
                         placement="mobile"
-                        messageClassName="mb-3"
-                        // On short screens a long message scrolls inside the
-                        // bar rather than covering the page.
-                        textClassName="[@media(max-height:30rem)]:block [@media(max-height:30rem)]:max-h-10 [@media(max-height:30rem)]:overflow-y-auto"
-                        scrollableText={shortScreen}
+                        onClick={runShare}
+                        busy={isSharing}
+                        {...exportButtonState}
                     />
-                    {/* Side by side on short screens wide enough for them,
-                        as in globals.css. */}
-                    <div className="flex flex-col gap-3 [@media(max-height:30rem)_and_(min-width:16rem)]:flex-row">
-                        <ExportButton
-                            ref={shareMobileRef}
-                            action="share"
-                            tone="light"
-                            placement="mobile"
-                            onClick={runShare}
-                            busy={isSharing}
-                            {...exportButtonState}
-                        />
-                        <ExportButton
-                            action="download"
-                            tone="dark"
-                            placement="mobile"
-                            onClick={runDownload}
-                            {...exportButtonState}
-                        />
-                    </div>
+                    <ExportButton
+                        action="download"
+                        tone="secondary"
+                        placement="mobile"
+                        onClick={runDownload}
+                        {...exportButtonState}
+                    />
                 </div>
             </div>
-
-            <PrivacyPackResult pack={selectedPack} />
-        </>
+        </div>
     );
 }

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // These stubs exercise the app's handling of each Web Share / Clipboard
-// outcome. They are evidence about PrivacyPack's behaviour, not proof that an
+// outcome. They are evidence about the app's behaviour, not proof that an
 // operating-system share sheet delivers the file.
 
 type ShareStub = {
@@ -96,9 +96,9 @@ async function stubSharing(page: Page, stub: ShareStub) {
     }, stub);
 }
 
-// The page shows the navbar copy of the feedback from the sm breakpoint up
+// The page shows the sidebar copy of the feedback from the wide breakpoint up
 // and the copy in the bottom bar below it.
-const feedback = (page: Page, placement: "navbar" | "mobile" = "navbar") =>
+const feedback = (page: Page, placement: "sidebar" | "mobile" = "sidebar") =>
     page.locator(`[data-export-feedback="${placement}"]`);
 
 const recorded = (page: Page) =>
@@ -106,15 +106,13 @@ const recorded = (page: Page) =>
 
 async function prepareMailPack(page: Page) {
     await page.goto("/create");
-    await page
-        .getByRole("button", { name: /^Mail private alternatives:/ })
-        .click();
+    await page.getByRole("button", { name: /^Mail alternatives:/ }).click();
     await page
         .getByRole("menuitemcheckbox")
         .filter({ hasText: "Proton Mail" })
         .click();
     await page.keyboard.press("Escape");
-    await expect(page.locator("#share-navbar")).toBeEnabled();
+    await expect(page.locator("#share-sidebar")).toBeEnabled();
 }
 
 test("a successful native share uses the tap and shows no fallback message", async ({
@@ -130,15 +128,15 @@ test("a successful native share uses the tap and shows no fallback message", asy
         clipboard: "accepts",
     });
     await prepareMailPack(page);
-    await page.locator("#share-navbar").click();
+    await page.locator("#share-sidebar").click();
 
     await expect
         .poll(async () => (await recorded(page)).shares)
         .toEqual([
-            { active: true, name: "privacypack.png", type: "image/png" },
+            { active: true, name: "alternative-pack.png", type: "image/png" },
         ]);
     expect((await recorded(page)).clipboardWrites).toEqual([]);
-    await expect(page.locator("#share-navbar")).toBeEnabled();
+    await expect(page.locator("#share-sidebar")).toBeEnabled();
     await expect(feedback(page).getByRole("status")).toHaveText("");
     await expect(feedback(page).getByRole("alert")).toHaveText("");
     expect(downloads).toEqual([]);
@@ -157,11 +155,11 @@ test("cancelling the share sheet is silent and leaves export ready", async ({
         clipboard: "accepts",
     });
     await prepareMailPack(page);
-    await page.locator("#share-navbar").click();
+    await page.locator("#share-sidebar").click();
 
     await expect.poll(async () => (await recorded(page)).shares.length).toBe(1);
-    await expect(page.locator("#share-navbar")).toBeEnabled();
-    await expect(page.locator("#download-navbar")).toBeEnabled();
+    await expect(page.locator("#share-sidebar")).toBeEnabled();
+    await expect(page.locator("#download-sidebar")).toBeEnabled();
     expect((await recorded(page)).clipboardWrites).toEqual([]);
     await expect(feedback(page).getByRole("status")).toHaveText("");
     await expect(feedback(page).getByRole("alert")).toHaveText("");
@@ -177,7 +175,7 @@ test("a throwing share capability check falls back instead of failing", async ({
         clipboard: "accepts",
     });
     await prepareMailPack(page);
-    await page.locator("#share-navbar").click();
+    await page.locator("#share-sidebar").click();
 
     await expect(feedback(page).getByRole("status")).toHaveText(
         "Image copied to clipboard.",
@@ -196,7 +194,7 @@ test("a refused share falls back to the clipboard", async ({ page }) => {
         clipboard: "accepts",
     });
     await prepareMailPack(page);
-    await page.locator("#share-navbar").click();
+    await page.locator("#share-sidebar").click();
 
     await expect(feedback(page).getByRole("status")).toHaveText(
         "Image copied to clipboard.",
@@ -216,9 +214,9 @@ test("unsupported sharing with a denied clipboard downloads the PNG", async ({
 
     const [download] = await Promise.all([
         page.waitForEvent("download"),
-        page.locator("#share-navbar").click(),
+        page.locator("#share-sidebar").click(),
     ]);
-    expect(download.suggestedFilename()).toBe("privacypack.png");
+    expect(download.suggestedFilename()).toBe("alternative-pack.png");
     await expect(feedback(page).getByRole("status")).toHaveText(
         "Sharing is unavailable here, so the PNG was downloaded.",
     );
@@ -234,22 +232,22 @@ test("export controls stay disabled while a share is pending", async ({
         clipboard: "accepts",
     });
     await prepareMailPack(page);
-    await page.locator("#share-navbar").click();
+    await page.locator("#share-sidebar").click();
 
-    await expect(page.locator("#share-navbar")).toBeDisabled();
-    await expect(page.locator("#share-navbar")).toHaveAccessibleName(
-        "SHARE (sharing)",
+    await expect(page.locator("#share-sidebar")).toBeDisabled();
+    await expect(page.locator("#share-sidebar")).toHaveAccessibleName(
+        "Share (sharing)",
     );
-    await expect(page.locator("#download-navbar")).toBeDisabled();
-    await page.locator("#share-navbar").click({ force: true });
-    await page.locator("#download-navbar").click({ force: true });
+    await expect(page.locator("#download-sidebar")).toBeDisabled();
+    await page.locator("#share-sidebar").click({ force: true });
+    await page.locator("#download-sidebar").click({ force: true });
     expect((await recorded(page)).shares).toHaveLength(1);
 
     await page.evaluate(() =>
         (window as unknown as { recorded: Recorded }).recorded.resolveShare!(),
     );
-    await expect(page.locator("#share-navbar")).toBeEnabled();
-    await expect(page.locator("#share-navbar")).toHaveText("SHARE");
+    await expect(page.locator("#share-sidebar")).toBeEnabled();
+    await expect(page.locator("#share-sidebar")).toHaveText("Share");
     expect((await recorded(page)).shares).toHaveLength(1);
 });
 
@@ -274,7 +272,7 @@ test("mobile share feedback is visible from the bottom of the page", async ({
         });
         await page.goto("/create");
         const lastPicker = page
-            .getByRole("button", { name: / private alternatives:/ })
+            .getByRole("button", { name: / alternatives:/ })
             .last();
         await lastPicker.click();
         await page.getByRole("menuitemcheckbox").first().click();
@@ -307,7 +305,7 @@ test("mobile share feedback is visible from the bottom of the page", async ({
             page.waitForEvent("download"),
             page.locator("#share-mobile").click(),
         ]);
-        expect(download.suggestedFilename()).toBe("privacypack.png");
+        expect(download.suggestedFilename()).toBe("alternative-pack.png");
         const status = feedback(page, "mobile").getByRole("status");
         await expect(status).toHaveText(
             "Sharing is unavailable here, so the PNG was downloaded.",
@@ -327,15 +325,15 @@ test("keyboard focus stays on Share while and after it runs", async ({
         clipboard: "accepts",
     });
     await prepareMailPack(page);
-    const share = page.locator("#share-navbar");
+    const share = page.locator("#share-sidebar");
     await share.focus();
     await page.keyboard.press("Enter");
-    await expect(share).toHaveAccessibleName("SHARE (sharing)");
+    await expect(share).toHaveAccessibleName("Share (sharing)");
     await expect(share).toBeFocused();
 
     await page.evaluate(() =>
         (window as unknown as { recorded: Recorded }).recorded.resolveShare!(),
     );
-    await expect(share).toHaveText("SHARE");
+    await expect(share).toHaveText("Share");
     await expect(share).toBeFocused();
 });

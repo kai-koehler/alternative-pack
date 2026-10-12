@@ -7,10 +7,8 @@ import {
     useState,
     useSyncExternalStore,
 } from "react";
-import {
-    preloadExportRenderer,
-    preparePrivacyPackImage,
-} from "@/lib/export-image";
+import { createPackPng } from "@/lib/pack-image";
+import type { PackItem } from "@/lib/pack";
 
 // Let a burst of edits settle before rendering the 3000px image.
 const CAPTURE_DELAY_MS = 250;
@@ -23,7 +21,8 @@ function subscribeToVisibility(onChange: () => void) {
 const isDocumentVisible = () => document.visibilityState !== "hidden";
 
 /**
- * Prepares the PNG for `exportKey` ahead of the Share tap, so sharing can use
+ * Prepares the PNG for `exportKey` (the JSON of the selected pack) ahead of
+ * the Share tap, so sharing can use
  * the tap's activation. A prepared image is only returned while its key still
  * matches, so a stale PNG can never be shared or downloaded.
  *
@@ -31,10 +30,10 @@ const isDocumentVisible = () => document.visibilityState !== "hidden";
  * edit in progress is not rendered, and while the page is visible: hidden
  * pages run no animation frames, so a capture would time out.
  *
- * A capture that has started keeps running when a picker opens: html2canvas
- * cannot be stopped once it renders, so aborting would waste the work and
- * make closing an unchanged picker start over. It is aborted when its
- * selection or attempt is replaced, when the page is hidden, or on unmount.
+ * A capture that has started keeps running when a picker opens: aborting
+ * would waste the work and make closing an unchanged picker start over. It
+ * is aborted when its selection or attempt is replaced, when the page is
+ * hidden, or on unmount.
  */
 export function usePackImage(exportKey: string | null, paused: boolean) {
     const [prepared, setPrepared] = useState<{
@@ -73,8 +72,6 @@ export function usePackImage(exportKey: string | null, paused: boolean) {
         controller: AbortController;
     } | null>(null);
 
-    useEffect(() => preloadExportRenderer(), []);
-
     useEffect(() => {
         if (!isPreparing || exportKey === null) return;
         // Closing a picker without changes: the capture is still running.
@@ -92,7 +89,10 @@ export function usePackImage(exportKey: string | null, paused: boolean) {
                 controller: new AbortController(),
             };
             running.current = run;
-            preparePrivacyPackImage(run.controller.signal)
+            createPackPng(
+                JSON.parse(exportKey) as PackItem[],
+                run.controller.signal,
+            )
                 .then(
                     ({ blob, fontLoaded }) => {
                         if (run.controller.signal.aborted) return;

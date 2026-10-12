@@ -1,62 +1,82 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-body {
-    background: #161616;
+html {
+    background: var(--color-page);
+    color-scheme: dark;
 }
 
-/* Below the sm breakpoint the export bar sticks to the bottom of the
+body {
+    background: var(--color-page);
+}
+
+/* Below the wide breakpoint the export bar sticks to the bottom of the
    viewport. Keep focused pickers scrolled clear of it. Once the page runs,
    app/create/page.tsx sets the padding from the bar's measured height. */
-@media (max-width: 39.999rem) {
+@media (max-width: 59.999rem) {
     html {
-        scroll-padding-bottom: calc(9rem + env(safe-area-inset-bottom));
+        scroll-padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
     }
 }
 
-/* On short screens (landscape phones, 400% zoom) its buttons sit side by
-   side, so the bar covers less of the page. That takes about 14.5rem, more
-   than a narrow screen has with a larger default font. */
-@media (max-width: 39.999rem) and (max-height: 30rem) and (min-width: 16rem) {
+/* Below 16rem the buttons stack, so the bar is taller. */
+@media (max-width: 15.999rem) {
     html {
-        scroll-padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+        scroll-padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
     }
 }
 
 /* Where the bar's buttons would take half the screen, side by side (5rem)
    or stacked (8.75rem), the bar stays at the end of the page and covers
    nothing. A larger default font on a short screen does this. */
-@media (max-width: 39.999rem) and (max-height: 10rem),
+@media (max-width: 59.999rem) and (max-height: 10rem),
     (max-width: 15.999rem) and (max-height: 17.5rem) {
     html {
         scroll-padding-bottom: 0;
     }
 }
 
-.green-text {
-    background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGMwvsIAAAJFAQj8cHnTAAAAAElFTkSuQmCC")
-        repeat;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
 }
 
 @theme inline {
     --breakpoint-xs: 24rem;
-    /* Narrower than this the create page stacks each pair of pickers. Side
-       by side they need two pickers (6.5rem each), the card's padding
-       (1.5rem), the page's padding (2rem) and a 24px arrow, which is 1.5rem
-       at the default font size and less at larger ones. Like every rem
-       breakpoint, it follows the browser's default font size, so a larger
-       font stacks the pickers on wider screens. */
-    --breakpoint-picker-row: 18rem;
-    /* The create page's pickers go to three columns, then to their largest
-       logos, only once those fit: three cards (25rem, then 31rem) and two
-       gaps (5rem, then 10rem), plus the page's 2rem padding and 2rem for a
-       scrollbar. Any narrower and the arrows between the pickers are
-       squeezed out and the grid overflows the page. */
-    --breakpoint-picker-xl: 89rem;
-    --breakpoint-picker-2xl: 117rem;
+    /* From here the create page shows the pack sidebar next to the
+       categories, with its own Share and Download buttons. Below it the
+       sidebar follows the categories and the buttons sit in a bar at the
+       bottom of the screen. Like every rem breakpoint, it follows the
+       browser's default font size. */
+    --breakpoint-wide: 60rem;
+    /* Narrower than this the pickers in a category card stack, with the
+       arrow pointing down: side by side, a long word such as
+       "Authenticator" would not fit in a picker. */
+    --breakpoint-picker-row: 20rem;
+
+    /* Brand tokens (the Value design tokens of tools.kai-koehler.com). */
+    --color-page: #111317;
+    --color-layer: #21242c;
+    --color-layer-hover: #292d36;
+    --color-layer-2: #373c49;
+    --color-layer-2-hover: #3d4250;
+    --color-line: #4e5566;
+    --color-line-soft: #373c49;
+    --color-heading: #f0f2f4;
+    --color-body: #d5d9e0;
+    --color-caption: #848fa4;
+    --color-subtle: #697388;
+    --color-brand: #00ccaa;
+    --color-brand-hover: #1fe0bf;
+    --color-brand-100: #002922;
+    --color-brand-200: #005244;
+    --color-danger: #ff8a8a;
+    --font-sans: var(--font-roboto);
+    --font-heading: var(--font-poppins);
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);
@@ -95,38 +115,38 @@ body {
 }
 
 :root {
-    --radius: 0.625rem;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --radius: 0.75rem;
+    --background: #111317;
+    --foreground: #f0f2f4;
+    --card: #21242c;
+    --card-foreground: #f0f2f4;
+    --popover: #21242c;
+    --popover-foreground: #d5d9e0;
+    --primary: #00ccaa;
+    --primary-foreground: #111317;
+    --secondary: #373c49;
+    --secondary-foreground: #f0f2f4;
+    --muted: #373c49;
+    --muted-foreground: #848fa4;
+    --accent: #373c49;
+    --accent-foreground: #f0f2f4;
+    --destructive: #ff8a8a;
+    --border: #373c49;
+    --input: #4e5566;
+    --ring: #00ccaa;
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
     --chart-3: oklch(0.398 0.07 227.392);
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --sidebar: #21242c;
+    --sidebar-foreground: #f0f2f4;
+    --sidebar-primary: #00ccaa;
+    --sidebar-primary-foreground: #111317;
+    --sidebar-accent: #373c49;
+    --sidebar-accent-foreground: #f0f2f4;
+    --sidebar-border: #373c49;
+    --sidebar-ring: #00ccaa;
 }
 
 @layer base {
@@ -134,6 +154,10 @@ body {
         @apply border-border outline-ring/50;
     }
     body {
-        @apply bg-background text-foreground;
+        @apply bg-page text-heading font-sans leading-normal;
+    }
+    :focus-visible {
+        outline: 2px solid var(--color-brand);
+        outline-offset: 2px;
     }
 }

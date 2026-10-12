@@ -60,7 +60,17 @@ async function loadPickerPage() {
             "@/components/CategoryPickers": CategoryPickers,
             "@/components/ExportButton": () => {},
             "@/components/ExportFeedback": () => {},
-            "@/components/PrivacyPackResult": () => {},
+            "@/components/PackPreview": () => {},
+            "@/components/SiteFooter": {
+                default: () => {},
+                footerLinkClassName: "",
+            },
+            "@/components/icons": {
+                ArrowLeftIcon: () => {},
+                ResetIcon: () => {},
+                SearchIcon: () => {},
+            },
+            "@/lib/site": { CATALOG_REPO_URL: "https://example.test" },
             "../../data/apps.json": JSON.parse(
                 await fs.readFile(
                     path.join(repoRoot, "data", "apps.json"),

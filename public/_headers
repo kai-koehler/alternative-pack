@@ -32,7 +32,8 @@
 /*.gif
   Cache-Control: public,max-age=0,must-revalidate
 
-/*.svg
+# Not /*.svg: the build also emits a hashed copy under /_next/static/.
+/icon.svg
   Cache-Control: public,max-age=0,must-revalidate
 
 /*.avif

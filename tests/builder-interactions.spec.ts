@@ -4,9 +4,7 @@ test("selected alternatives remain readable when another option is focused", asy
     page,
 }) => {
     await page.goto("/create");
-    await page
-        .locator('button[aria-label^="Mail private alternatives:"]')
-        .click();
+    await page.locator('button[aria-label^="Mail alternatives:"]').click();
 
     const selectedOption = page
         .getByRole("menuitemcheckbox")
@@ -154,9 +152,7 @@ test("touches that end without a tap do not reverse a later click", async ({
         const cdp = await context.newCDPSession(page);
         await page.goto("/create");
         await page.waitForLoadState("networkidle");
-        const picker = page.locator(
-            'button[aria-label^="Mail private alternatives:"]',
-        );
+        const picker = page.locator('button[aria-label^="Mail alternatives:"]');
 
         // A finger drag across the middle of the picker, ending on it.
         const drag = async (dx: number, dy: number) => {
@@ -257,9 +253,7 @@ test("completed touch taps open pickers and allow selection and dismissal", asyn
         const page = await context.newPage();
         await page.goto("/create");
         await page.waitForLoadState("networkidle");
-        const picker = page.locator(
-            'button[aria-label^="Mail private alternatives:"]',
-        );
+        const picker = page.locator('button[aria-label^="Mail alternatives:"]');
         await picker.tap();
         await expect(page.getByRole("menu")).toBeVisible();
         await page
@@ -278,7 +272,12 @@ test("completed touch taps open pickers and allow selection and dismissal", asyn
 
         await picker.tap();
         await expect(page.getByRole("menu")).toBeVisible();
-        await page.touchscreen.tap(160, 95);
+        // A tap on the page beside the menu, in the side gutter.
+        const menuBox = (await page.getByRole("menu").boundingBox())!;
+        await page.touchscreen.tap(
+            8,
+            menuBox.y > 40 ? menuBox.y - 20 : menuBox.y + menuBox.height + 20,
+        );
         await expect(page.getByRole("menu")).toHaveCount(0);
         await expect(picker).toHaveAttribute("aria-expanded", "false");
         await expect(page.locator("#share-mobile")).toBeEnabled();
@@ -306,7 +305,7 @@ test("keyboard users can change mainstream apps and toggle alternatives", async 
     await expect(page.getByRole("menu")).toHaveCount(0);
 
     const alternativePicker = page.locator(
-        'button[aria-label^="Mail private alternatives:"]',
+        'button[aria-label^="Mail alternatives:"]',
     );
     await alternativePicker.focus();
     await page.keyboard.press("ArrowDown");
@@ -327,7 +326,7 @@ test("Tab and Shift+Tab leave either picker's menu and close it", async ({
     await page.goto("/create");
     const pickers = page.locator('button[data-slot="dropdown-menu-trigger"]');
     const openMenu = page.locator('[role="menu"][data-state="open"]');
-    const share = page.locator("#share-navbar");
+    const share = page.locator("#share-sidebar");
 
     // Mail's two pickers come first. The menu sits as if just after its
     // trigger: Shift+Tab returns to the trigger, Tab goes past it.
@@ -361,14 +360,15 @@ test("Tab and Shift+Tab leave either picker's menu and close it", async ({
     await expect(pickers.nth(2)).toBeFocused();
     await expect(share).toBeEnabled();
 
-    // With nothing after the last picker, Tab closes its menu on it.
+    // Past the last picker, Tab closes its menu and moves on to the
+    // sidebar, where Share comes first.
     const last = pickers.last();
     await last.focus();
     await page.keyboard.press("ArrowDown");
     await expect(openMenu).toHaveCount(1);
     await page.keyboard.press("Tab");
     await expect(openMenu).toHaveCount(0);
-    await expect(last).toBeFocused();
+    await expect(share).toBeFocused();
 });
 
 test("Tab past the last picker skips another menu still closing", async ({
@@ -398,10 +398,13 @@ test("Tab past the last picker skips another menu still closing", async ({
     await expect(openMenu).toHaveCount(1);
     await page.keyboard.press("Tab");
     await expect(openMenu).toHaveCount(0);
-    await expect(last).toBeFocused();
+    // With nothing picked, Share, Download and Reset are disabled, so the
+    // next stop is the first footer link.
+    const next = page.getByRole("link", { name: "PrivacyPack" });
+    await expect(next).toBeFocused();
     // It must keep focus after both menus finish closing and unmount.
     await expect(page.getByRole("menu")).toHaveCount(0);
-    await expect(last).toBeFocused();
+    await expect(next).toBeFocused();
 });
 
 test("mouse users can select apps and dismiss either picker", async ({
@@ -427,7 +430,7 @@ test("mouse users can select apps and dismiss either picker", async ({
     await expect(page.getByRole("menu")).toHaveCount(0);
 
     const alternativePicker = page.locator(
-        'button[aria-label^="Mail private alternatives:"]',
+        'button[aria-label^="Mail alternatives:"]',
     );
     await alternativePicker.click();
     await page
@@ -492,26 +495,20 @@ test("tapping an export button while a picker is open closes it and prepares the
 
     try {
         const page = await context.newPage();
+        // Counts PNG encodes: the preview only draws, so each one is an
+        // export image being prepared.
         await page.addInitScript(() => {
             const state = window as typeof window & { captureStarts: number };
             state.captureStarts = 0;
-            new MutationObserver((records) => {
-                for (const record of records) {
-                    for (const node of record.addedNodes) {
-                        if (
-                            node instanceof HTMLElement &&
-                            node.querySelector("#privacy-pack-export-copy")
-                        )
-                            state.captureStarts++;
-                    }
-                }
-            }).observe(document, { childList: true, subtree: true });
+            const toBlob = HTMLCanvasElement.prototype.toBlob;
+            HTMLCanvasElement.prototype.toBlob = function (...args) {
+                state.captureStarts++;
+                return toBlob.apply(this, args);
+            };
         });
         await page.goto("/create");
         await page.waitForLoadState("networkidle");
-        await page
-            .getByRole("button", { name: /^Mail private alternatives:/ })
-            .tap();
+        await page.getByRole("button", { name: /^Mail alternatives:/ }).tap();
         await page
             .getByRole("menuitemcheckbox")
             .filter({ hasText: "Proton Mail" })
@@ -530,7 +527,7 @@ test("tapping an export button while a picker is open closes it and prepares the
             ),
         ).toBe(0);
         await expect(download).toBeDisabled();
-        await expect(download).toHaveText("DOWNLOAD");
+        await expect(download).toHaveText("Download");
 
         const bounds = (await download.boundingBox())!;
         await page.touchscreen.tap(
@@ -560,9 +557,7 @@ test("keyboard focus stays visible among selected alternatives", async ({
     // Radix only focuses the first item for a keyboard-opened menu once its
     // key listener exists, so let the page hydrate first.
     await page.waitForLoadState("networkidle");
-    await page
-        .getByRole("button", { name: /^Mail private alternatives:/ })
-        .focus();
+    await page.getByRole("button", { name: /^Mail alternatives:/ }).focus();
     await page.keyboard.press("ArrowDown");
     const options = page.getByRole("menuitemcheckbox");
     await expect(options.nth(0)).toBeFocused();
@@ -587,14 +582,12 @@ test("Remove is set apart, names its category, and is disabled when empty", asyn
     page,
 }) => {
     await page.goto("/create");
-    await page
-        .getByRole("button", { name: /^Mail private alternatives:/ })
-        .click();
+    await page.getByRole("button", { name: /^Mail alternatives:/ }).click();
     const remove = page.getByRole("menuitem", {
         name: "Remove all Mail alternatives",
     });
     await expect(remove).toHaveAttribute("aria-disabled", "true");
-    await expect(page.getByRole("menu").getByRole("separator")).toHaveCount(2);
+    await expect(page.getByRole("menu").getByRole("separator")).toHaveCount(1);
 
     await page
         .getByRole("menuitemcheckbox")
@@ -604,8 +597,8 @@ test("Remove is set apart, names its category, and is disabled when empty", asyn
     await remove.click();
     await expect(page.getByRole("menu")).toHaveCount(0);
     await expect(
-        page.getByRole("button", { name: /^Mail private alternatives:/ }),
-    ).toHaveAccessibleName("Mail private alternatives: Pick; 0 of 3 selected");
+        page.getByRole("button", { name: /^Mail alternatives:/ }),
+    ).toHaveAccessibleName("Mail alternatives: Pick; 0 of 3 selected");
 });
 
 test("a picker reopened while its menu is still closing stays open", async ({
@@ -616,7 +609,7 @@ test("a picker reopened while its menu is still closing stays open", async ({
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.goto("/create");
     const picker = page.getByRole("button", {
-        name: /^Mail private alternatives:/,
+        name: /^Mail alternatives:/,
     });
     await picker.click();
     await expect(page.getByRole("menu")).toBeVisible();
@@ -628,38 +621,6 @@ test("a picker reopened while its menu is still closing stays open", async ({
     await expect(page.locator('[role="menu"][data-state="open"]')).toHaveCount(
         1,
     );
-});
-
-test("the card lists categories in catalog order, not selection order", async ({
-    page,
-}) => {
-    await page.goto("/create");
-    for (const [category, app] of [
-        ["Search", "Brave Search"],
-        ["Mail", "Proton Mail"],
-    ]) {
-        await page
-            .getByRole("button", {
-                name: new RegExp(`^${category} private alternatives:`),
-            })
-            .click();
-        await page
-            .getByRole("menuitemcheckbox")
-            .filter({ hasText: app })
-            .click();
-        await page.keyboard.press("Escape");
-    }
-
-    await expect(
-        page.locator("#privacy-pack-result-to-capture [data-pack-category]"),
-    ).toHaveCount(2);
-    expect(
-        await page
-            .locator("#privacy-pack-result-to-capture [data-pack-category]")
-            .evaluateAll((cards) =>
-                cards.map((card) => (card as HTMLElement).dataset.packCategory),
-            ),
-    ).toEqual(["Mail", "Search"]);
 });
 
 test("an open menu stays above the mobile export bar", async ({
@@ -679,7 +640,7 @@ test("an open menu stays above the mobile export bar", async ({
         await page.goto("/create");
         await page.waitForLoadState("networkidle");
         const picker = page.getByRole("button", {
-            name: /^Mail private alternatives:/,
+            name: /^Mail alternatives:/,
         });
         await picker.tap();
         for (const name of ["Proton Mail", "Tuta Mail"]) {
@@ -701,14 +662,14 @@ test("an open menu stays above the mobile export bar", async ({
         // Allow for sub-pixel positioning.
         expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(barTop + 0.5);
 
-        // A tap aimed at SHARE reaches the bar, not a menu item behind it.
+        // A tap aimed at Share reaches the bar, not a menu item behind it.
         await page.touchscreen.tap(
             shareBox.x + shareBox.width / 2,
             shareBox.y + shareBox.height / 2,
         );
         await expect(page.getByRole("menu")).toHaveCount(0);
         await expect(picker).toHaveAccessibleName(
-            "Mail private alternatives: Proton Mail, Tuta Mail; 2 of 3 selected",
+            "Mail alternatives: Proton Mail, Tuta Mail; 2 of 3 selected",
         );
         await expect(share).toBeEnabled();
     } finally {

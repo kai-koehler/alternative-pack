@@ -1,84 +1,73 @@
-"use client";
-
-import Image from "next/image";
 import Link from "next/link";
 import React from "react";
-import { getAssetUrl } from "@/lib/assets";
+import PackPreview from "@/components/PackPreview";
+import SiteFooter from "@/components/SiteFooter";
+import { ArrowRightIcon, BrandMark } from "@/components/icons";
+import data from "../data/apps.json";
+import { getSelectedPack, restorePack, sortCategories } from "@/lib/pack";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
+
+// An example pack for the home page, drawn like a real export.
+const examplePack = getSelectedPack(
+    restorePack(sortCategories(data.categories), {
+        Mail: { main: "gmail", alts: ["proton_mail"] },
+        Photos: { main: "google_photos", alts: ["ente_photos"] },
+        Search: { main: "google_search", alts: ["duckduckgo"] },
+        Browser: { main: "chrome", alts: ["firefox", "brave"] },
+        Messaging: { main: "whatsapp", alts: ["signal"] },
+        Drive: { main: "google_drive", alts: ["nextcloud"] },
+    }),
+);
 
 export default function Home() {
     return (
-        <div className="flex h-auto w-full flex-col items-center justify-normal py-16 lg:py-32 xl:py-16 2xl:py-20">
-            <div className="flex flex-col items-center">
-                <div className="flex flex-col items-center">
-                    <div className="h-[50px] w-[90px] md:h-[90px] md:w-[135px]">
-                        <Image
-                            src={getAssetUrl("/logo.png")}
-                            alt="Privacy Pack logo"
-                            width={0}
-                            height={0}
-                            sizes="100vw"
-                            className="h-auto w-full"
-                            priority
+        <div className="mx-auto flex min-h-dvh w-[min(81rem,calc(100%-2.5rem))] flex-col pt-10 pb-12 max-sm:w-[calc(100%-2rem)] max-sm:pt-6">
+            <header className="flex items-center gap-3">
+                <BrandMark className="size-8" />
+                <span className="font-heading text-lg font-semibold">
+                    {SITE_NAME}
+                </span>
+            </header>
+
+            <main className="wide:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] my-auto grid grid-cols-1 items-center gap-12 py-16">
+                <div className="max-w-[40rem]">
+                    <p className="text-brand mb-4 inline-flex items-center gap-2.5 text-[0.8125rem] font-medium tracking-[0.08em] uppercase">
+                        <span
+                            aria-hidden="true"
+                            className="bg-brand size-2 rounded-full shadow-[0_0_0_4px_rgb(0_204_170/18%)]"
                         />
-                    </div>
-                    <h1 className="green-text xs:text-5xl mt-6 text-center text-4xl font-bold md:mt-4 md:text-8xl">
-                        PrivacyPack
+                        Generator
+                    </p>
+                    <h1 className="font-heading text-[clamp(2.125rem,5.4vw,3.5rem)] leading-[1.1] font-semibold tracking-[-0.02em] break-words hyphens-auto">
+                        Your switches to{" "}
+                        <span className="text-brand">alternative apps</span>, in
+                        one image
                     </h1>
-                    <p className="xs:text-lg mt-4 flex flex-col text-center text-base font-semibold text-white/50 uppercase md:text-2xl">
-                        Your privacy wins, in one card
+                    <p className="text-caption mt-[1.125rem] text-[1.0625rem]">
+                        {SITE_DESCRIPTION}
                     </p>
                     <Link
                         href="/create"
                         id="create-pack"
-                        className="mt-12 items-center justify-center rounded-2xl bg-white px-10 py-4 text-base font-semibold text-black uppercase transition-all duration-150 hover:bg-white/80"
+                        className="font-heading bg-brand text-page hover:bg-brand-hover mt-8 inline-flex min-h-12 items-center gap-2 rounded-xl px-6 text-[0.9375rem] font-semibold transition-colors"
                     >
-                        Create your Pack
+                        Create your pack
+                        <ArrowRightIcon className="size-[18px]" />
                     </Link>
                 </div>
-            </div>
-            <div className="my-20 flex flex-col items-center gap-2">
-                <span className="text-xs text-[#aeaeae]">Toy by</span>
-                <div className="w-16">
-                    <a href="https://ente.com/" target="_blank" rel="noopener">
-                        <Image
-                            src={getAssetUrl("/ente.svg")}
-                            alt="Ente logo"
-                            width={0}
-                            height={0}
-                            sizes="100vw"
-                            className="h-auto w-full"
-                            priority
+
+                <div className="border-line bg-layer wide:max-w-none mx-auto w-full max-w-[32.5rem] rounded-[18px] border p-[18px]">
+                    <div className="border-line-soft bg-page aspect-square overflow-hidden rounded-xl border">
+                        <PackPreview
+                            pack={examplePack}
+                            label="Example of an Alternative Pack image"
+                            className="block h-full w-full"
                         />
-                    </a>
+                    </div>
                 </div>
-            </div>
-            <div className="flex w-[80%] flex-col items-center gap-3 md:w-[640px] xl:w-[740px]">
-                <div className="w-full">
-                    <Image
-                        src={getAssetUrl("/hero.png")}
-                        alt="Hero illustration"
-                        width={0}
-                        height={0}
-                        sizes="100vw"
-                        className="h-auto w-full"
-                        priority
-                    />
-                </div>
-            </div>
-            <div className="mt-24 flex flex-row gap-5 text-sm">
-                <Link
-                    href="/privacy"
-                    className="text-[#8a8a8a] underline underline-offset-4 hover:text-[#a8a8a8]"
-                >
-                    Privacy
-                </Link>
-                <Link
-                    href="/terms"
-                    className="text-[#8a8a8a] underline underline-offset-4 hover:text-[#a8a8a8]"
-                >
-                    Terms
-                </Link>
-            </div>
+            </main>
+
+            <SiteFooter />
         </div>
     );
 }

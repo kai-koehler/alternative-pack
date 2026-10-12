@@ -1,7 +1,7 @@
 import React from "react";
 
 type ExportFeedbackProps = {
-    placement: "navbar" | "mobile";
+    placement: "sidebar" | "mobile";
     status: string | null;
     error: string | null;
     /** Offered with preparation errors. Kept mounted while retrying so focus stays put. */
@@ -37,7 +37,7 @@ export default function ExportFeedback({
             <div role="status" aria-atomic="true">
                 {status && (
                     <p
-                        className={`rounded-lg bg-white/8 px-4 py-3 text-sm text-[#d6d6d6] ${messageClassName}`}
+                        className={`text-caption text-[0.8125rem] ${messageClassName}`}
                     >
                         <span className={textClassName} tabIndex={textFocus}>
                             {status}
@@ -48,7 +48,7 @@ export default function ExportFeedback({
             <div role="alert" aria-atomic="true">
                 {error && (
                     <p
-                        className={`rounded-lg bg-red-500/12 px-4 py-3 text-sm text-red-200 ${messageClassName}`}
+                        className={`text-danger text-[0.8125rem] ${messageClassName}`}
                     >
                         <span className={textClassName} tabIndex={textFocus}>
                             {error}
@@ -60,7 +60,7 @@ export default function ExportFeedback({
                                 onClick={() => {
                                     if (!retry.pending) retry.onRetry();
                                 }}
-                                className="ml-3 cursor-pointer underline underline-offset-4 aria-disabled:cursor-default aria-disabled:opacity-50"
+                                className="text-heading ml-2 cursor-pointer underline underline-offset-4 aria-disabled:cursor-default aria-disabled:opacity-50"
                             >
                                 {retry.pending ? "Retrying..." : "Retry export"}
                             </button>

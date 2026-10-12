@@ -1,10 +1,12 @@
-# PrivacyPack.org
+# Alternative Pack
 
-Pick the mainstream apps you used before, show the privacy-respecting tools you’ve switched to, and share your privacy wins!
+Pick the apps you used before, show the alternatives you’ve switched to, and share your pack as one image.
 
-Create your pack at [PrivacyPack.org](https://privacypack.org).
+Create your pack at [tools.kai-koehler.com/alternative-pack](https://tools.kai-koehler.com/alternative-pack).
 
-![PrivacyPack Banner](public/og-image.png)
+![Alternative Pack banner](public/og-image.png)
+
+Alternative Pack is a fork of [PrivacyPack](https://github.com/ente/privacypack) by Ente. It adds a new design, a live preview of the image, a filter for categories and apps, a reset button, and picks that are kept in the browser between visits.
 
 ## Development Setup
 
@@ -18,8 +20,8 @@ Create your pack at [PrivacyPack.org](https://privacypack.org).
 1. Clone the repository
 
 ```bash
-git clone https://github.com/ente/privacypack.git
-cd privacypack
+git clone https://github.com/kai-koehler/alternative-pack.git
+cd alternative-pack
 ```
 
 2. Install dependencies from the lockfile
@@ -64,17 +66,18 @@ Next.js 16 compiles for Chrome, Edge and Firefox 111 and Safari 16.4 or later, a
 
 ### How export works
 
-The card is drawn in the browser from the hidden `components/PrivacyPackResult.tsx` with html2canvas into a 3000×3000 PNG. Nothing is uploaded. An image is prepared after each change, once no picker is open, so that Share can call the Web Share API directly from the tap. Without file sharing, Share copies the image to the clipboard, or downloads it.
+The image is drawn in the browser onto a canvas by `lib/pack-image.ts` and encoded as a 3000×3000 PNG. Nothing is uploaded. The sidebar shows a smaller live preview drawn by the same code. An image is prepared after each change, once no picker is open, so that Share can call the Web Share API directly from the tap. Without file sharing, Share copies the image to the clipboard, or downloads it.
 
-The card uses the bundled JetBrains Mono font. If it cannot be loaded, for example because a content blocker or iOS Lockdown Mode blocks web fonts, the image uses a system monospace font and the page says so. Each image is fetched once and embedded in the capture, so html2canvas never fetches images itself, and an image that cannot load fails the export rather than leaving a gap. `app/JetBrainsMono.woff2` is a losslessly compressed copy of `app/JetBrainsMono.ttf`, with all glyphs retained; the TTF remains the source. It was generated with FontTools 4.60.2 using `fonttools ttLib.woff2 compress app/JetBrainsMono.ttf`.
+The page and the image use the bundled Poppins (headings) and Roboto (text) fonts, served from `app/fonts/`. They are the Latin subsets from Fontsource 5.3.0, under the SIL Open Font License; each license sits next to its font. If the fonts cannot be loaded within 5 seconds, for example because a content blocker or iOS Lockdown Mode blocks web fonts, the image uses a system font and the page says so. A logo that cannot be loaded within 8 seconds is drawn as a letter tile, so the export never fails or waits on one image.
+
+Picks are saved in the browser's local storage under `alternative-pack:v1` and restored on the next visit. Apps that are no longer in the catalog are dropped. Nothing else is stored.
 
 ### Dependency versions
 
-Three packages deliberately stay behind `npm outdated`:
+Two packages deliberately stay behind `npm outdated`:
 
 - `typescript` stays on 6.x. TypeScript 7 has no JavaScript API yet, which `typescript-eslint` (used by `eslint-config-next`) needs.
 - `@types/node` follows the Node major in `.node-version` (22), so code cannot typecheck against Node APIs the runtime does not have.
-- `html2canvas-pro` stays on 1.x. In 2.x the cloned page's stylesheet can load after rendering starts, which leaves the card unstyled in WebKit, and a slow web font holds the capture until it times out.
 
 ### Dependency audit
 
@@ -82,7 +85,7 @@ Three packages deliberately stay behind `npm outdated`:
 
 ## Add a missing app
 
-New apps can be added to the catalog by modifying `/data/apps.json` and opening a PR. Each app belongs to a category and is either a mainstream app or a privacy-focused alternative.
+New apps can be added to the catalog by modifying `/data/apps.json` and opening a PR. Each app belongs to a category and is either a mainstream app or an alternative.
 
 ### App logo requirements
 
@@ -97,11 +100,11 @@ After adding or changing images in `public/`, run `npm run assets:generate` to r
 
 ## About
 
-PrivacyPack is created and maintained by [Ente](https://ente.io), the makers of Ente Photos and Ente Auth.
+Alternative Pack is maintained by [Kai Köhler](https://kai-koehler.com). It is based on PrivacyPack, created and maintained by [Ente](https://ente.io), the makers of Ente Photos and Ente Auth. The app catalog and logos come from PrivacyPack.
 
 ## License
 
-PrivacyPack is distributed under the [MIT license](/LICENSE).
+Alternative Pack is distributed under the [MIT license](/LICENSE), like PrivacyPack. The Poppins and Roboto fonts in `app/fonts/` are under the SIL Open Font License 1.1.
 
 ### App logo credits
 

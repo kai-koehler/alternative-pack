@@ -1,4 +1,6 @@
-export const PRIVACY_PACK_FILENAME = "privacypack.png";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
+
+export const PACK_IMAGE_FILENAME = "alternative-pack.png";
 const DOWNLOAD_URL_REVOKE_DELAY_MS = 60_000;
 
 export type ShareResult = "shared" | "copied" | "downloaded" | "cancelled";
@@ -9,7 +11,7 @@ export function downloadImage(blob: Blob) {
     try {
         const link = document.createElement("a");
         link.href = url;
-        link.download = PRIVACY_PACK_FILENAME;
+        link.download = PACK_IMAGE_FILENAME;
         link.rel = "noopener";
         link.style.display = "none";
         document.body.appendChild(link);
@@ -69,12 +71,13 @@ async function copyBlobToClipboard(blob: Blob) {
  * need the tap's transient activation, so nothing may be awaited first.
  */
 export async function shareImage(blob: Blob): Promise<ShareResult> {
-    const file = new File([blob], PRIVACY_PACK_FILENAME, {
+    const file = new File([blob], PACK_IMAGE_FILENAME, {
         type: "image/png",
     });
     const data = {
-        text: "",
-        url: "https://privacypack.org",
+        title: `My ${SITE_NAME}`,
+        text: `My ${SITE_NAME}`,
+        url: SITE_URL,
         files: [file],
     };
 

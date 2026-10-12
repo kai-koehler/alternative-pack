@@ -15,7 +15,11 @@ const {
     createInitialPack,
     getPrivateAlternativeLabel,
     getSelectedPack,
+    hasPicks,
+    matchesFilter,
+    restorePack,
     selectMainstreamApp,
+    serializePack,
     togglePrivateAlternative,
 } = await loadTsModule(path.join(repoRoot, "lib", "pack.ts"));
 const catalog = JSON.parse(
@@ -141,10 +145,69 @@ test("mainstream changes alone do not select a category", () => {
 });
 
 test("alternative labels summarise the first pick and the remainder", () => {
-    assert.equal(getPrivateAlternativeLabel([]), "[Pick]");
+    assert.equal(getPrivateAlternativeLabel([]), "Pick");
     assert.equal(getPrivateAlternativeLabel([app("a")]), "A");
     assert.equal(
         getPrivateAlternativeLabel([app("a"), app("b"), app("c")]),
         "A +2",
     );
+});
+
+test("saved picks round-trip, in pick order", () => {
+    let pack = createInitialPack(fixture);
+    pack = selectMainstreamApp(pack, "Second", app("m2b"));
+    pack = togglePrivateAlternative(pack, "Second", app("c"));
+    pack = togglePrivateAlternative(pack, "Second", app("a"));
+    const saved = JSON.parse(JSON.stringify(serializePack(pack)));
+
+    assert.deepEqual(saved.Second, { main: "m2b", alts: ["c", "a"] });
+    assert.deepEqual(restorePack(fixture, saved), pack);
+});
+
+test("restoring ignores picks that no longer match the catalog", () => {
+    const fresh = createInitialPack(fixture);
+    for (const saved of [null, "pack", 3, [], { Second: "m2" }]) {
+        assert.deepEqual(restorePack(fixture, saved), fresh);
+    }
+
+    const pack = restorePack(fixture, {
+        Second: { main: "gone", alts: ["a", "gone", "a", "b", "c", "d"] },
+        First: { main: "m1", alts: "x" },
+        Removed: { main: "m1", alts: ["x"] },
+        toString: { main: "m1", alts: ["x"] },
+    });
+    const second = pack.find((item) => item.category === "Second");
+    assert.equal(second.mainstream_app_id, "m2");
+    assert.deepEqual(
+        second.private_alternatives.map(({ id }) => id),
+        ["a", "b", "c"],
+    );
+    assert.equal(second.private_alternatives.length, MAX_PRIVATE_ALTERNATIVES);
+    assert.deepEqual(alternativesOf(pack, "First"), []);
+});
+
+test("a pack has picks once an alternative or another mainstream app is chosen", () => {
+    const fresh = createInitialPack(fixture);
+    assert.equal(hasPicks(fresh, fixture), false);
+    assert.equal(
+        hasPicks(selectMainstreamApp(fresh, "Second", app("m2b")), fixture),
+        true,
+    );
+    assert.equal(
+        hasPicks(togglePrivateAlternative(fresh, "First", app("x")), fixture),
+        true,
+    );
+});
+
+test("the filter matches category and app names, ignoring case and spaces", () => {
+    const [second] = fixture;
+    for (const query of ["", "  ", "second", " SEC", "m2b", "d"]) {
+        assert.equal(matchesFilter(second, query), true, query);
+    }
+    for (const query of ["first", "x", "zz"]) {
+        assert.equal(matchesFilter(second, query), false, query);
+    }
+
+    const mail = catalog.categories.find(({ name }) => name === "Mail");
+    assert.equal(matchesFilter(mail, "thunder"), true);
 });

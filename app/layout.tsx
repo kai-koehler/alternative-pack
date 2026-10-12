@@ -1,42 +1,23 @@
-import type { Metadata } from "next";
-import localFont from "next/font/local";
+import type { Metadata, Viewport } from "next";
+import { poppins, roboto } from "./fonts";
 import { getAssetUrl } from "@/lib/assets";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-const jetBrainsMono = localFont({
-    // Lossless WOFF2 of the adjacent TTF source; all glyphs are retained.
-    src: "./JetBrainsMono.woff2",
-    // If the font is blocked and there is no Arial for next/font's fallback
-    // (Linux), keep the page monospace rather than the browser default.
-    // The same list as SYSTEM_MONO_FAMILY in lib/export-image.ts.
-    fallback: [
-        "Menlo",
-        "Consolas",
-        "DejaVu Sans Mono",
-        "Liberation Mono",
-        "Noto Sans Mono",
-        "monospace",
-    ],
-    // For menus, which are portalled to <body>, outside the wrapper below.
-    variable: "--font-jetbrains-mono",
-});
-
 export const metadata: Metadata = {
-    title: { default: "PrivacyPack", template: "%s · PrivacyPack" },
-    description:
-        "Pick the mainstream apps you used before, show the privacy-respecting tools you have switched to, and share your privacy wins!",
+    title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+    description: SITE_DESCRIPTION,
     openGraph: {
-        title: "PrivacyPack",
-        description:
-            "Pick the mainstream apps you used before, show the privacy-respecting tools you have switched to, and share your privacy wins!",
-        url: "https://privacypack.org",
-        siteName: "PrivacyPack",
+        title: SITE_NAME,
+        description: SITE_DESCRIPTION,
+        url: SITE_URL,
+        siteName: SITE_NAME,
         images: [
             {
-                url: `https://privacypack.org${getAssetUrl("/og-image.png")}`,
+                url: `${SITE_URL}${getAssetUrl("/og-image.png")}`,
                 width: 1200,
                 height: 630,
-                alt: "PrivacyPack Preview",
+                alt: `${SITE_NAME} preview`,
             },
         ],
         locale: "en_US",
@@ -44,12 +25,13 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "PrivacyPack",
-        description:
-            "Pick the mainstream apps you used before, show the privacy-respecting tools you have switched to, and share your privacy wins!",
-        images: [`https://privacypack.org${getAssetUrl("/og-image.png")}`],
+        title: SITE_NAME,
+        description: SITE_DESCRIPTION,
+        images: [`${SITE_URL}${getAssetUrl("/og-image.png")}`],
     },
 };
+
+export const viewport: Viewport = { themeColor: "#111317" };
 
 export default function RootLayout({
     children,
@@ -58,15 +40,10 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className={`${jetBrainsMono.variable} antialiased`}>
-                {/* The page font is set on this wrapper, not on <body>. An
-                    export renders a copy of <body> that holds only the
-                    capture copy (lib/export-image.ts). When the web font is
-                    unavailable nothing there may name it, or WebKit starts
-                    loading it for <body> and the render waits for that. */}
-                <div className={`${jetBrainsMono.className} contents`}>
-                    {children}
-                </div>
+            <body
+                className={`${poppins.variable} ${roboto.variable} antialiased`}
+            >
+                {children}
             </body>
         </html>
     );

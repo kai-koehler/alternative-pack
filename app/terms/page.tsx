@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowLeftIcon } from "@/components/icons";
 
 export const metadata: Metadata = { title: "Terms and Conditions" };
 
 const Terms = () => {
     return (
-        <div className="flex min-h-screen w-full flex-col items-center">
-            <div className="flex w-full flex-col gap-5 p-8 text-gray-400 lg:w-[56rem] lg:p-16">
-                <h1 className="mb-8 text-3xl text-white uppercase">
+        <div className="mx-auto w-[min(56rem,calc(100%-2.5rem))] pt-10 pb-16 max-sm:w-[calc(100%-2rem)] max-sm:pt-6">
+            <div className="text-body flex flex-col gap-5 leading-relaxed">
+                <h1 className="font-heading text-heading mt-[clamp(1.5rem,6vh,4rem)] mb-4 text-[clamp(1.75rem,4vw,2.5rem)] leading-tight font-semibold">
                     Terms and Conditions
                 </h1>
                 <p>Last Updated: April 25, 2026</p>
@@ -21,7 +22,7 @@ const Terms = () => {
                     &quot;Site&quot;). This Agreement, along with our{" "}
                     <Link
                         href="/privacy"
-                        className="underline underline-offset-2"
+                        className="text-heading hover:text-brand underline underline-offset-[3px]"
                     >
                         Privacy Policy
                     </Link>{" "}
@@ -34,7 +35,7 @@ const Terms = () => {
                     Agreement, please do not use the Site.
                 </p>
 
-                <h2 className="text-xl text-white">
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
                     1. Description of Services
                 </h2>
                 <p>
@@ -46,7 +47,7 @@ const Terms = () => {
                     informational and educational purposes only.
                 </p>
 
-                <h2 className="text-xl text-white">
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
                     2. Use of Logos and Intellectual Property
                 </h2>
                 <p>
@@ -57,12 +58,14 @@ const Terms = () => {
                     property rights of all third parties.
                 </p>
 
-                <h2 className="text-xl text-white">3. Privacy Policy</h2>
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
+                    3. Privacy Policy
+                </h2>
                 <p>
                     Our{" "}
                     <Link
                         href="/privacy"
-                        className="underline underline-offset-2"
+                        className="text-heading hover:text-brand underline underline-offset-[3px]"
                     >
                         Privacy Policy
                     </Link>{" "}
@@ -70,7 +73,9 @@ const Terms = () => {
                     you agree to the practices described there.
                 </p>
 
-                <h2 className="text-xl text-white">4. Eligibility</h2>
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
+                    4. Eligibility
+                </h2>
                 <p>To use the Site, Users must:</p>
                 <ul className="list-disc pl-8">
                     <li>Be 13 years of age or older.</li>
@@ -84,7 +89,9 @@ const Terms = () => {
                     </li>
                 </ul>
 
-                <h2 className="text-xl text-white">5. User Responsibilities</h2>
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
+                    5. User Responsibilities
+                </h2>
                 <p>
                     <strong>(a) No Malicious Use:</strong> You agree not to use
                     the Site to distribute malware, spam, or otherwise disrupt
@@ -96,7 +103,7 @@ const Terms = () => {
                     and how you share that copy.
                 </p>
 
-                <h2 className="text-xl text-white">
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
                     6. Limitations of Liability
                 </h2>
                 <p>
@@ -105,14 +112,16 @@ const Terms = () => {
                     the Site or use of logos and app comparisons.
                 </p>
 
-                <h2 className="text-xl text-white">7. Indemnification</h2>
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
+                    7. Indemnification
+                </h2>
                 <p>
                     You agree to indemnify and hold us harmless from any claims,
                     damages, or legal costs arising from your use of the Site,
                     generated cards, shared copies, or violation of these Terms.
                 </p>
 
-                <h2 className="text-xl text-white">
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
                     8. Modifications to Terms
                 </h2>
                 <p>
@@ -121,14 +130,18 @@ const Terms = () => {
                     constitutes acceptance of the revised Terms.
                 </p>
 
-                <h2 className="text-xl text-white">9. Governing Law</h2>
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
+                    9. Governing Law
+                </h2>
                 <p>
                     These Terms are governed by the laws of India. Any dispute
                     not subject to arbitration shall be resolved in courts
                     located in Bangalore, Karnataka, India.
                 </p>
 
-                <h2 className="text-xl text-white">10. Miscellaneous</h2>
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
+                    10. Miscellaneous
+                </h2>
                 <p>
                     These Terms, together with the Privacy Policy, represent the
                     entire agreement between you and us regarding the Site.
@@ -136,12 +149,14 @@ const Terms = () => {
                     under these Terms.
                 </p>
 
-                <h2 className="text-xl text-white">11. Contact Us</h2>
+                <h2 className="font-heading text-heading mt-3 text-lg font-semibold">
+                    11. Contact Us
+                </h2>
                 <p>
                     You can reach us by email at:{" "}
                     <a
                         href="mailto:privacy@ente.io"
-                        className="underline underline-offset-2"
+                        className="text-heading hover:text-brand underline underline-offset-[3px]"
                     >
                         privacy@ente.io
                     </a>
@@ -151,8 +166,12 @@ const Terms = () => {
                     Whitefield, Bengaluru, India.
                 </p>
 
-                <Link href="/" className="mt-8 underline underline-offset-2">
-                    Go back to homepage
+                <Link
+                    href="/"
+                    className="text-caption hover:text-brand mt-8 inline-flex items-center gap-1.5 text-sm font-medium"
+                >
+                    <ArrowLeftIcon className="size-[18px]" />
+                    Home
                 </Link>
             </div>
         </div>

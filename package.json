@@ -11,7 +11,7 @@
 		"assets:generate": "node scripts/asset-versions.mjs",
 		"assets:check": "node scripts/asset-versions.mjs --check",
 		"test:catalog": "node --test tests/catalog-validation.mjs",
-		"test:unit": "node --test tests/infra-unit.mjs tests/pack-unit.mjs tests/fit-name-unit.mjs tests/catalog-validation.mjs tests/picker-state-unit.mjs",
+		"test:unit": "node --test tests/infra-unit.mjs tests/pack-unit.mjs tests/name-breaks-unit.mjs tests/pack-image-unit.mjs tests/catalog-validation.mjs tests/picker-state-unit.mjs",
 		"test:e2e": "node scripts/run-e2e.mjs",
 		"test:e2e:dev": "node scripts/run-e2e.mjs --dev",
 		"check": "npm run assets:check && npm run catalog:validate && npm run test:unit && npm run typecheck && npm run lint && npm run build && npm run test:e2e"
@@ -19,7 +19,6 @@
 	"dependencies": {
 		"@radix-ui/react-dropdown-menu": "^2.1.25",
 		"clsx": "^2.1.1",
-		"html2canvas-pro": "^1.6.7",
 		"lucide-react": "^1.52.0",
 		"next": "16.4.0",
 		"react": "19.3.0",

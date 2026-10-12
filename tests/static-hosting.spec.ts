@@ -13,7 +13,7 @@ const assetVersions = JSON.parse(
 async function pickAlternative(page: Page, category: string, name: string) {
     await page
         .getByRole("button", {
-            name: new RegExp(`^${category} private alternatives:`),
+            name: new RegExp(`^${category} alternatives:`),
         })
         .click();
     await page.getByRole("menuitemcheckbox").filter({ hasText: name }).click();
@@ -87,17 +87,17 @@ test("building, downloading and sharing a pack stays in the browser", async ({
     await page.goto("/create");
     await pickAlternative(page, "Mail", "Proton Mail");
     await pickAlternative(page, "Photos", "Ente Photos");
-    await expect(page.locator("#download-navbar")).toBeEnabled();
+    await expect(page.locator("#download-sidebar")).toBeEnabled();
     const [download] = await Promise.all([
         page.waitForEvent("download"),
-        page.locator("#download-navbar").click(),
+        page.locator("#download-sidebar").click(),
     ]);
-    expect(download.suggestedFilename()).toBe("privacypack.png");
-    await page.locator("#share-navbar").click();
-    await expect(page.locator("#share-navbar")).toHaveText("SHARE");
-    await page.getByRole("link", { name: "PrivacyPack" }).click();
+    expect(download.suggestedFilename()).toBe("alternative-pack.png");
+    await page.locator("#share-sidebar").click();
+    await expect(page.locator("#share-sidebar")).toHaveText("Share");
+    await page.getByRole("link", { name: "Home", exact: true }).click();
     await expect(
-        page.getByRole("link", { name: "Create your Pack" }),
+        page.getByRole("link", { name: "Create your pack" }),
     ).toBeVisible();
 
     expect(uploads).toEqual([]);
@@ -115,7 +115,7 @@ test("building, downloading and sharing a pack stays in the browser", async ({
         ),
     ).toEqual([]);
     const storage = await page.evaluate(async () => ({
-        localStorage: localStorage.length,
+        localStorage: Object.keys(localStorage),
         sessionStorage: sessionStorage.length,
         cookies: document.cookie,
         indexedDB:
@@ -128,8 +128,9 @@ test("building, downloading and sharing a pack stays in the browser", async ({
             (name) => name !== "__next_debug_channel",
         );
     }
+    // The picks are kept on this device, under one key, and nowhere else.
     expect(storage).toEqual({
-        localStorage: 0,
+        localStorage: ["alternative-pack:v1"],
         sessionStorage: 0,
         cookies: "",
         indexedDB: [],
@@ -141,7 +142,7 @@ test("pages load directly and public images use content-versioned URLs", async (
     page,
 }) => {
     for (const [route, heading] of [
-        ["/", "PrivacyPack"],
+        ["/", "Your switches to alternative apps, in one image"],
         ["/privacy", "Privacy Policy"],
         ["/terms", "Terms and Conditions"],
     ]) {
@@ -154,7 +155,7 @@ test("pages load directly and public images use content-versioned URLs", async (
 
     const response = await page.goto("/create");
     expect(response?.status()).toBe(200);
-    await expect(page.locator("#download-navbar")).toBeDisabled();
+    await expect(page.locator("#download-sidebar")).toBeDisabled();
     const images = await page
         .locator("img")
         .evaluateAll((elements) =>
@@ -213,7 +214,12 @@ test.describe("local emulation of public/_headers", () => {
                 url,
             ).toBe("public,max-age=31536000,immutable");
         }
-        for (const url of [logo, "/og-image.png", "/favicon.ico"]) {
+        for (const url of [
+            logo,
+            "/og-image.png",
+            "/favicon.ico",
+            "/icon.svg",
+        ]) {
             expect(
                 (await request.get(url)).headers()["cache-control"],
                 url,

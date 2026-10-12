@@ -24,7 +24,11 @@ const { getAssetUrl } = await loadTsModule(
 );
 
 test("known public images use their actual content version", async () => {
-    for (const pathname of ["/logo.png", "/hero.png", "/app-logos/brave.jpg"]) {
+    for (const pathname of [
+        "/og-image.png",
+        "/app-logos/brave.jpg",
+        "/app-logos/wero.jpg",
+    ]) {
         const bytes = await fs.readFile(
             path.join(publicDir, pathname.slice(1)),
         );
@@ -39,16 +43,16 @@ test("known public images use their actual content version", async () => {
 
 test("asset URLs replace stale versions while preserving query and fragment", () => {
     const url = new URL(
-        getAssetUrl("/logo.png?download=1&v=old#preview"),
+        getAssetUrl("/og-image.png?download=1&v=old#preview"),
         "https://example.test",
     );
-    assert.equal(url.pathname, "/logo.png");
+    assert.equal(url.pathname, "/og-image.png");
     assert.equal(url.searchParams.get("download"), "1");
-    assert.deepEqual(url.searchParams.getAll("v"), [versions["/logo.png"]]);
+    assert.deepEqual(url.searchParams.getAll("v"), [versions["/og-image.png"]]);
     assert.equal(url.hash, "#preview");
     for (const pathname of [
         "/missing.jpg",
-        "https://example.test/logo.png",
+        "https://example.test/og-image.png",
         "toString",
     ]) {
         assert.equal(getAssetUrl(pathname), pathname);

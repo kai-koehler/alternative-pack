@@ -1,74 +1,32 @@
-import { Download, Loader2, Share2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import React from "react";
+import { DownloadIcon, ShareIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
-const ACTIONS: Record<
-    "share" | "download",
-    {
-        Icon: typeof Share2;
-        label: string;
-        title: string;
-    }
-> = {
+const ACTIONS = {
     share: {
-        Icon: Share2,
-        label: "SHARE",
-        title: "Share PrivacyPack",
+        Icon: ShareIcon,
+        label: "Share",
+        title: "Share your Alternative Pack",
     },
     download: {
-        Icon: Download,
-        label: "DOWNLOAD",
-        title: "Download PrivacyPack",
+        Icon: DownloadIcon,
+        label: "Download PNG",
+        title: "Download your Alternative Pack",
     },
 };
 
 const TONES = {
-    light: {
-        className: "bg-white text-black active:bg-white/80",
-        hoverClassName: "hover:bg-white/80",
-        iconColor: "black",
-    },
-    dark: {
-        className: "bg-[#525252] text-white active:bg-[#444444]",
-        hoverClassName: "hover:bg-[#444444]",
-        iconColor: "white",
-    },
+    primary:
+        "bg-brand text-page enabled:hover:bg-brand-hover aria-disabled:hover:bg-brand",
+    secondary:
+        "border-line bg-layer-2 text-heading enabled:hover:border-brand aria-disabled:hover:border-line",
 };
 
 const PLACEMENTS = {
-    navbar: {
-        className: "hidden h-11 px-5 sm:flex",
-        labelClassName: undefined,
-        iconSize: 18,
-        hover: true,
-        // From sm to md the header has no room for the longer PREPARING...
-        // label. The spinner shows progress there, and the accessible name
-        // says it, as in the mobile bar.
-        preparingLabel: (label: string) => (
-            <>
-                <span className="md:hidden">
-                    {label}
-                    <span className="sr-only"> (preparing)</span>
-                </span>
-                <span className="hidden md:inline">PREPARING...</span>
-            </>
-        ),
-    },
-    mobile: {
-        className: "flex h-12 w-full",
-        labelClassName: "text-lg",
-        iconSize: 16,
-        hover: false,
-        // Side by side on a short screen, two PREPARING... labels can be
-        // wider than the screen. Keep their own labels, with progress in
-        // the spinner and accessible names.
-        preparingLabel: (label: string) => (
-            <>
-                {label}
-                <span className="sr-only"> (preparing)</span>
-            </>
-        ),
-    },
+    sidebar: { shortLabel: false },
+    // The bar is narrow on phones, so Download drops "PNG".
+    mobile: { shortLabel: true },
 };
 
 type ExportButtonProps = {
@@ -103,10 +61,11 @@ export default function ExportButton({
     preparing,
     canExport,
 }: ExportButtonProps) {
-    const { Icon, label, title } = ACTIONS[action];
-    const toneStyle = TONES[tone];
-    const placementStyle = PLACEMENTS[placement];
-    const Indicator = busy || preparing ? Loader2 : Icon;
+    const { Icon, label: fullLabel, title } = ACTIONS[action];
+    const label = PLACEMENTS[placement].shortLabel
+        ? fullLabel.replace(/ PNG$/, "")
+        : fullLabel;
+    const spinning = busy || preparing;
 
     return (
         <button
@@ -121,34 +80,28 @@ export default function ExportButton({
             title={
                 canExport
                     ? title
-                    : "Pick at least one private alternative before exporting"
+                    : "Pick at least one alternative before exporting"
             }
             className={cn(
-                "cursor-pointer items-center justify-center gap-2 rounded-lg transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
-                placementStyle.className,
-                toneStyle.className,
-                placementStyle.hover && toneStyle.hoverClassName,
+                "font-heading flex min-h-[2.875rem] min-w-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-transparent px-3.5 text-sm font-semibold transition enabled:active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 aria-disabled:cursor-progress aria-disabled:opacity-70",
+                TONES[tone],
             )}
         >
-            <Indicator
-                color={toneStyle.iconColor}
-                size={placementStyle.iconSize}
-                className={busy || preparing ? "animate-spin" : undefined}
-                aria-hidden="true"
-            />
-            <span className={placementStyle.labelClassName}>
+            {spinning ? (
+                <Loader2
+                    className="size-[18px] animate-spin"
+                    aria-hidden="true"
+                />
+            ) : (
+                <Icon className="size-[18px]" />
+            )}
+            <span>
+                {label}
                 {preparing ? (
-                    placementStyle.preparingLabel(label)
+                    <span className="sr-only"> (preparing)</span>
                 ) : busy ? (
-                    <>
-                        {label}
-                        {/* Keep the label's width in both the header and
-                            mobile bar while exposing the busy state. */}
-                        <span className="sr-only"> (sharing)</span>
-                    </>
-                ) : (
-                    label
-                )}
+                    <span className="sr-only"> (sharing)</span>
+                ) : null}
             </span>
         </button>
     );
