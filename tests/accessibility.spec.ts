@@ -1396,13 +1396,15 @@ for (const { font, width, height } of [
 test("a clipped message in the mobile bar scrolls from the keyboard", async ({
     page,
 }) => {
-    // A narrow, short screen, with a blocked web font: the notice about the
-    // system font is longer than the bar shows.
+    // A narrow, short screen with larger text and a blocked web font: the
+    // notice about the system font is longer than the two lines the bar
+    // shows, whatever system font stands in.
     await page.setViewportSize({ width: 256, height: 225 });
     await page.route("**/_next/static/media/*.{ttf,woff2}*", (route) =>
         route.abort("blockedbyclient"),
     );
     await page.goto("/create");
+    await page.addStyleTag({ content: "html { font-size: 20px; }" });
     await mailAlternatives(page).click();
     await page
         .getByRole("menuitemcheckbox")
